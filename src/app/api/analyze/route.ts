@@ -67,7 +67,8 @@ export async function POST(request: NextRequest) {
       enableDeepCrawl,
       maxVideos,
       douyinNewOptions,
-      locale
+      locale,
+      normalizeBoolean(body.captureOnly, false)
     );
 
     // 立即返回任务ID，不等待任务完成

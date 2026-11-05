@@ -45,7 +45,7 @@ export interface ClusteredDataGroup {
 
 export interface Job {
   jobId: string;
-  status: 'processing' | 'completed' | 'failed';
+  status: 'processing' | 'captured' | 'completed' | 'failed';
   progress: string;
   keywords: string[];
   limit: number;
@@ -77,6 +77,7 @@ export interface Job {
   // 聚类后的数据分组
   clusteredData?: ClusteredDataGroup[];
   error?: string;
+  captureOnly?: boolean;
 }
 
 export interface CreateJobOptions {
@@ -111,7 +112,8 @@ export class JobManager {
     deepCrawl: boolean = false,
     maxVideos: number = 10,
     douyinNewOptions?: DouyinNewCrawlOptions,
-    locale: string = 'zh'
+    locale: string = 'zh',
+    captureOnly: boolean = false
   ): string {
     this.cleanupExpiredJobs();
 
@@ -127,6 +129,7 @@ export class JobManager {
       maxVideos,
       douyinNewOptions,
       locale,
+      captureOnly,
       startTime: Date.now()
     };
 
@@ -156,8 +159,8 @@ export class JobManager {
       }
       this.updateJobStatus(
         jobId,
-        'failed',
-        '任务执行失败',
+        job.rawData?.rawTexts.length ? 'captured' : 'failed',
+        job.rawData?.rawTexts.length ? '分析中断，可稍后重试' : '采集失败',
         error instanceof Error ? error.message : '未知错误'
       );
     });
@@ -171,16 +174,33 @@ export class JobManager {
     return this.jobs.get(jobId) || null;
   }
 
+  public listJobs(): Job[] {
+    this.cleanupExpiredJobs();
+    return [...this.jobs.values()].sort((a, b) => b.startTime - a.startTime);
+  }
+
+  public analyzeCapturedJob(jobId: string): boolean {
+    const job = this.jobs.get(jobId);
+    if (!job || job.status !== 'captured' || !job.rawData?.rawTexts.length) return false;
+    job.captureOnly = false;
+    this.updateJobStatus(jobId, 'processing', '等待分析...');
+    jobQueue.run(jobId, 'analysis', () => withTimeout(this.executeJob(jobId), getJobTimeoutMs(), '分析超时'),
+      () => this.updateJobStatus(jobId, 'processing', '正在分析已采集数据...'))
+      .catch(error => this.updateJobStatus(jobId, 'captured', '分析中断，可稍后重试', error instanceof Error ? error.message : String(error)));
+    return true;
+  }
+
   // 更新任务状态
   private updateJobStatus(jobId: string, status: Job['status'], progress?: string, error?: string): void {
     const job = this.jobs.get(jobId);
     if (job) {
-      if (this.timedOutJobs.has(jobId) && status !== 'failed') {
+      if (this.timedOutJobs.has(jobId) && (status === 'processing' || status === 'completed')) {
         return;
       }
 
       job.status = status;
       if (progress) job.progress = progress;
+      if (status === 'processing' || status === 'completed') job.error = undefined;
       if (error) job.error = error;
       this.persistJob(job);
       logJobEvent(status === 'failed' ? 'error' : 'info', 'analysis_job_status_changed', {
@@ -198,6 +218,10 @@ export class JobManager {
     if (!job) return;
 
     try {
+      if (job.rawData) {
+        await this.analyzeStoredJob(jobId);
+        return;
+      }
       // 创建数据源服务
       const dataSourceService = DataSourceFactory.createDataSource(job.dataSource);
       const sourceName = DataSourceFactory.getSourceDisplayName(job.dataSource);
@@ -354,6 +378,26 @@ export class JobManager {
         throw new Error('未能获取到任何相关数据');
       }
 
+      if (job.captureOnly) {
+        this.updateJobStatus(jobId, 'captured', '采集完成，等待手动分析');
+        return;
+      }
+      await this.analyzeStoredJob(jobId);
+
+    } catch (error) {
+      this.updateJobStatus(jobId, job.rawData?.rawTexts.length ? 'captured' : 'failed',
+        job.rawData?.rawTexts.length ? '分析未完成，可稍后重试' : '采集失败',
+        error instanceof Error ? error.message : '未知错误');
+    }
+  }
+
+  private async analyzeStoredJob(jobId: string): Promise<void> {
+    const job = this.jobs.get(jobId);
+    if (!job?.rawData) throw new Error('没有可分析的已采集数据');
+    const { videos: allVideos, comments: allComments, rawTexts: allRawTexts } = job.rawData;
+    const textToSourceMap = new Map<string, { type: 'video' | 'comment'; data: RawVideoData | RawCommentData }>();
+    for (const video of allVideos) if (video.title) textToSourceMap.set(video.title, { type: 'video', data: video });
+    for (const comment of allComments) if (comment.comment_text) textToSourceMap.set(comment.comment_text, { type: 'comment', data: comment });
       // 步骤3: 分离视频和评论进行聚类（避免不同语义层次混淆）
       this.updateJobStatus(jobId, 'processing', '正在进行语义聚类分析...');
 
@@ -491,19 +535,7 @@ export class JobManager {
           }
         } catch (error) {
           logger.error(`聚类 ${i} 分析失败:`, error);
-          // 创建一个默认结果
-          const result: ClusterResult = {
-            id: this.clusteringService.generateClusterId(i),
-            size: cluster.length,
-            analysis: {
-              one_line_pain: `基于 ${job.keywords.join(', ')} 的用户需求痛点`,
-              paid_interest: 'Medium',
-              rationale: '由于LLM分析失败，基于聚类大小和代表性文本推断',
-              potential_product: `针对 ${job.keywords.join(', ')} 用户的解决方案`
-            },
-            representative_texts: representativeTexts.slice(0, 5)
-          };
-          results.push(result);
+          throw error;
         }
       }
 
@@ -541,9 +573,6 @@ export class JobManager {
       job.results = results;
       this.updateJobStatus(jobId, 'completed', '分析完成');
 
-    } catch (error) {
-      this.updateJobStatus(jobId, 'failed', '任务失败', error instanceof Error ? error.message : '未知错误');
-    }
   }
 
   // 清理过期任务（可选）

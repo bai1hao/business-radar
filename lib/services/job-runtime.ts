@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { logger } from './logger';
 
-type RuntimeJobStatus = 'processing' | 'completed' | 'failed';
+type RuntimeJobStatus = 'processing' | 'captured' | 'completed' | 'failed';
 
 export interface RuntimeJob {
   jobId: string;
@@ -10,6 +10,7 @@ export interface RuntimeJob {
   progress: string;
   startTime: number;
   error?: string;
+  rawData?: { rawTexts: string[] };
 }
 
 const DEFAULT_MAX_CONCURRENT_JOBS = 1;
@@ -76,9 +77,9 @@ export class JsonJobStore<TJob extends RuntimeJob> {
         }
 
         if (job.status === 'processing') {
-          job.status = 'failed';
-          job.progress = '服务重启，任务已停止';
-          job.error = '服务重启后无法恢复正在执行的内存任务，请重新提交';
+          job.status = job.rawData?.rawTexts?.length ? 'captured' : 'failed';
+          job.progress = job.status === 'captured' ? '服务重启，已保存采集数据，可重新分析' : '服务重启，采集任务已停止';
+          job.error = job.status === 'failed' ? '采集任务未完成，请重新提交' : undefined;
           this.save(job);
         }
 

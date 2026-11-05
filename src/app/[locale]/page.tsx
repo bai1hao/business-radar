@@ -244,6 +244,7 @@ export default function Home() {
             {tNav('aiProduct')}
           </Link>
           <Link href="/evidence" className="hover:text-[#18181B] transition">需求证据库</Link>
+          <Link href="/capture" className="hover:text-[#18181B] transition">采集任务</Link>
         </div>
         <div className="flex items-center gap-3">
           <LanguageSwitcher />
