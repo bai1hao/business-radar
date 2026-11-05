@@ -7,6 +7,7 @@ import { GLMService } from './glm-service';
 import { PriorityScorer } from './priority-scoring';
 import { JOB_RETENTION, pruneExpiredJobs, trimOldestJobs } from './job-retention';
 import { logger } from './logger';
+import { addEvidence } from './evidence-store';
 import { getJobTimeoutMs, JsonJobStore, jobQueue, logJobEvent, withTimeout } from './job-runtime';
 
 // 原始视频数据接口
@@ -23,6 +24,11 @@ export interface RawVideoData {
 
 // 原始评论数据接口
 export interface RawCommentData {
+  platform?: string;
+  comment_id?: string;
+  video_id?: string;
+  video_url?: string;
+  collected_at?: string;
   video_title: string;
   comment_text: string;
   username: string;
@@ -262,6 +268,11 @@ export class JobManager {
           if (result.allComments) {
             for (const comment of result.allComments) {
               const commentData: RawCommentData = {
+                platform: comment.platform,
+                comment_id: comment.comment_id,
+                video_id: comment.video_id,
+                video_url: comment.video_url,
+                collected_at: comment.collected_at,
                 video_title: comment.video_title || '',
                 comment_text: comment.comment_text || '',
                 username: comment.username || '',
@@ -323,6 +334,21 @@ export class JobManager {
         comments: allComments,
         rawTexts: allRawTexts
       };
+      // Capture source evidence before embedding or chat analysis, which may be offline.
+      for (const comment of allComments) {
+        if (comment.video_url && comment.comment_text) {
+          addEvidence({
+            platform: comment.platform || job.dataSource,
+            text: comment.comment_text,
+            sourceUrl: comment.video_url,
+            commentId: comment.comment_id,
+            contentId: comment.video_id,
+            authorLabel: comment.username,
+            collectedAt: comment.collected_at
+          });
+        }
+      }
+      this.persistJob(job);
 
       if (allRawTexts.length === 0) {
         throw new Error('未能获取到任何相关数据');

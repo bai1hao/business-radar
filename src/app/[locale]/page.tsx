@@ -13,6 +13,8 @@ import RawDataExportButton from "@/components/RawDataExportButton";
 import DataQualityBanner from "@/components/DataQualityBanner";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
+// The evidence library remains usable when the AI provider is offline.
+
 // ClusterResult 类型定义
 interface ClusterResult {
   id: string;
@@ -241,6 +243,7 @@ export default function Home() {
           <Link href="/ai-product" className="hover:text-[#18181B] transition">
             {tNav('aiProduct')}
           </Link>
+          <Link href="/evidence" className="hover:text-[#18181B] transition">需求证据库</Link>
         </div>
         <div className="flex items-center gap-3">
           <LanguageSwitcher />

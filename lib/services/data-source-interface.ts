@@ -20,6 +20,11 @@ export interface DataSourceVideo {
 }
 
 export interface DataSourceComment {
+  platform?: string;
+  comment_id?: string;
+  video_id?: string;
+  video_url?: string;
+  collected_at?: string;
   video_title?: string;
   comment_text?: string;
   username?: string;

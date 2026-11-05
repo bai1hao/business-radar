@@ -300,8 +300,13 @@ export class DouyinNewService {
   /**
    * 映射评论数据为通用格式
    */
-  private mapToRawCommentData(comment: DouyinNewComment, videoTitle: string): DataSourceComment {
+  private mapToRawCommentData(comment: DouyinNewComment, videoTitle: string, videoUrl: string): DataSourceComment {
     return {
+      platform: 'douyin',
+      comment_id: comment.comment_id,
+      video_id: comment.aweme_id,
+      video_url: videoUrl,
+      collected_at: new Date().toISOString(),
       video_title: videoTitle,
       comment_text: comment.content,
       username: this.anonymizeUserLabel(comment.nickname),
@@ -411,6 +416,7 @@ export class DouyinNewService {
 
       // 构建 video ID -> title 映射
       const videoTitleMap = new Map(limitedVideos.map(v => [v.aweme_id, v.title]));
+      const videoUrlMap = new Map(limitedVideos.map(v => [v.aweme_id, v.aweme_url]));
 
       // 提取文本
       const rawTexts: string[] = [];
@@ -423,7 +429,7 @@ export class DouyinNewService {
 
       const mappedComments = filteredComments.map(c => {
         const videoTitle = videoTitleMap.get(c.aweme_id) || '';
-        const mapped = this.mapToRawCommentData(c, videoTitle);
+        const mapped = this.mapToRawCommentData(c, videoTitle, videoUrlMap.get(c.aweme_id) || '');
         if (c.content && c.content.length > 5) rawTexts.push(c.content);
         return mapped;
       });

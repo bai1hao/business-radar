@@ -65,6 +65,7 @@ logs/
 
 # Local runtime state
 .deeppoint/
+.business-radar/
 
 # OS
 Thumbs.db

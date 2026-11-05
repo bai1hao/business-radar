@@ -1,26 +1,32 @@
-import createMiddleware from 'next-intl/middleware';
+import createIntlMiddleware from 'next-intl/middleware';
+import { NextRequest, NextResponse } from 'next/server';
 import { locales, defaultLocale } from './i18n/config';
 
-export default createMiddleware({
-  // 支持的语言列表
-  locales,
+const intl = createIntlMiddleware({ locales, defaultLocale, localeDetection: true, localePrefix: 'always' });
 
-  // 默认语言
-  defaultLocale,
+export default function middleware(request: NextRequest) {
+  const username = process.env.BUSINESS_RADAR_USERNAME;
+  const password = process.env.BUSINESS_RADAR_PASSWORD;
+  if (!username || !password) {
+    if (process.env.NODE_ENV === 'production') {
+      return new NextResponse('Set BUSINESS_RADAR_USERNAME and BUSINESS_RADAR_PASSWORD before starting the server.', { status: 503 });
+    }
+  } else {
+    const header = request.headers.get('authorization') || '';
+    let valid = false;
+    if (header.startsWith('Basic ')) {
+      try {
+        const decoded = atob(header.slice(6));
+        const separator = decoded.indexOf(':');
+        valid = separator > 0 && decoded.slice(0, separator) === username && decoded.slice(separator + 1) === password;
+      } catch { valid = false; }
+    }
+    if (!valid) {
+      return new NextResponse('Authentication required', { status: 401, headers: { 'WWW-Authenticate': 'Basic realm="Business Radar", charset="UTF-8"', 'Cache-Control': 'no-store' } });
+    }
+  }
+  if (request.nextUrl.pathname.startsWith('/api/')) return NextResponse.next();
+  return intl(request);
+}
 
-  // 语言检测策略
-  localeDetection: true,
-
-  // 始终在 URL 中显示语言前缀
-  localePrefix: 'always'
-});
-
-export const config = {
-  // 匹配所有路径，排除 API 路由、静态文件等
-  matcher: [
-    // 匹配所有路径
-    '/((?!api|_next|_vercel|.*\\..*).*)',
-    // 也匹配根路径
-    '/'
-  ]
-};
+export const config = { matcher: ['/((?!_next|_vercel|favicon.ico).*)'] };
