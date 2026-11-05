@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { needSignals } from '@/lib/need-signals';
 
 type Row = { id: string; platform: string; text: string; sourceUrl: string; commentId?: string; authorLabel?: string; status: 'new' | 'verified' | 'contacted' | 'dismissed'; note: string; collectedAt: string };
 
@@ -10,6 +11,7 @@ export default function EvidencePage() {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [signalFilter, setSignalFilter] = useState('all');
   const [page, setPage] = useState(1);
   const refresh = async () => setRows(await (await fetch('/api/evidence', { cache: 'no-store' })).json());
   useEffect(() => { void refresh(); }, []);
@@ -26,6 +28,7 @@ export default function EvidencePage() {
 
   const filtered = rows.filter(row =>
     (statusFilter === 'all' || row.status === statusFilter) &&
+    (signalFilter === 'all' || needSignals(row.text).length > 0) &&
     (!query.trim() || `${row.text} ${row.note} ${row.platform}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
   );
   const pageSize = 30;
@@ -49,11 +52,13 @@ export default function EvidencePage() {
       <div className="flex flex-wrap gap-3">
         <input aria-label="搜索线索" value={query} onChange={e => { setQuery(e.target.value); setPage(1); }} placeholder="搜索评论原文或备注" className="min-w-64 flex-1 rounded-lg border border-zinc-300 bg-white p-3" />
         <select aria-label="筛选线索状态" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="all">全部状态</option><option value="new">待核实</option><option value="verified">已核实</option><option value="contacted">已联系</option><option value="dismissed">忽略</option></select>
+        <select aria-label="筛选需求信号" value={signalFilter} onChange={e => { setSignalFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="all">全部评论</option><option value="signals">仅看需求信号</option></select>
       </div>
       <p className="text-sm text-zinc-500">找到 {filtered.length} 条 · 第 {Math.min(page, pageCount)} / {pageCount} 页</p>
       {visible.map(row => <article key={row.id} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-zinc-500"><span>{row.platform}</span><span>{new Date(row.collectedAt).toLocaleString()}</span><span>{row.commentId ? `评论 ID：${row.commentId}` : '未记录评论 ID'}</span></div>
         <p className="whitespace-pre-wrap leading-7">{row.text}</p>
+        {needSignals(row.text).length > 0 && <div className="mt-3 flex flex-wrap gap-2">{needSignals(row.text).map(label => <span key={label} className="rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-800">{label}</span>)}</div>}
         <div className="mt-4 flex flex-wrap items-center gap-4"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 underline">打开原帖</a><select aria-label="线索状态" value={row.status} onChange={e => void update(row, e.target.value as Row['status'], row.note)} className="rounded-lg border border-zinc-300 p-2 text-sm"><option value="new">待核实</option><option value="verified">已核实</option><option value="contacted">已联系</option><option value="dismissed">忽略</option></select></div>
         <textarea aria-label="线索备注" defaultValue={row.note} onBlur={e => { if (e.target.value !== row.note) void update(row, row.status, e.target.value); }} placeholder="备注：需求背景、联系进展…" className="mt-4 w-full rounded-lg border border-zinc-300 p-3 text-sm" />
       </article>)}
