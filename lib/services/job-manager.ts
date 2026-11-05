@@ -250,7 +250,7 @@ export class JobManager {
         // 根据是否深度抓取选择不同的方法
         if (job.deepCrawl && dataSourceService.searchWithComments) {
           // 深度抓取模式（含评论）
-          this.updateJobStatus(jobId, 'processing', `正在深度抓取 "${keyword}" 相关数据（含评论）...`);
+          this.updateJobStatus(jobId, 'processing', `正在抓取第 ${i + 1}/${job.keywords.length} 组「${keyword}」的视频和评论；单组可能需要数分钟...`);
 
           // 为新版抖音使用完整配置
           const crawlOptions = job.dataSource === 'douyin_new' && job.douyinNewOptions
@@ -312,7 +312,7 @@ export class JobManager {
           }
         } else {
           // 标准抓取模式
-          this.updateJobStatus(jobId, 'processing', `正在从${sourceName}抓取 "${keyword}" 相关数据...`);
+          this.updateJobStatus(jobId, 'processing', `正在抓取第 ${i + 1}/${job.keywords.length} 组「${keyword}」相关数据...`);
 
           const result = await dataSourceService.searchAndFetch(
             keyword,
@@ -343,6 +343,12 @@ export class JobManager {
             }
           }
         }
+        job.crawlStats = {
+          videoCount: totalVideoCount || allVideos.length,
+          commentCount: totalCommentCount || allComments.length,
+          textCount: allRawTexts.length
+        };
+        this.persistJob(job);
       }
 
       // 保存抓取统计
