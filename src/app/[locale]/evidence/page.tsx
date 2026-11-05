@@ -36,6 +36,22 @@ export default function EvidencePage() {
     (signalFilter === 'all' || needSignals(row.text).length > 0) &&
     (!query.trim() || `${row.text} ${row.note} ${row.platform}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
   );
+  function exportFiltered() {
+    const headers = ['平台', '评论原文', '需求信号', '状态', '原帖链接', '评论分享链接', '评论ID', '备注', '采集时间'];
+    const statusNames = { new: '待核实', verified: '已核实', contacted: '已联系', dismissed: '忽略' };
+    const safeCell = (value: string) => {
+      const protectedValue = /^[\s]*[=+\-@]/.test(value) ? `'${value}` : value;
+      return `"${protectedValue.replace(/"/g, '""')}"`;
+    };
+    const lines = [headers, ...filtered.map(row => [row.platform, row.text, needSignals(row.text).join('、'), statusNames[row.status], row.sourceUrl, row.commentUrl || '', row.commentId || '', row.note, row.collectedAt])];
+    const csv = '\uFEFF' + lines.map(line => line.map(safeCell).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `business-radar-evidence-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
   const pageSize = 30;
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const visible = filtered.slice((Math.min(page, pageCount) - 1) * pageSize, Math.min(page, pageCount) * pageSize);
@@ -60,6 +76,7 @@ export default function EvidencePage() {
         <select aria-label="筛选需求信号" value={signalFilter} onChange={e => { setSignalFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="all">全部评论</option><option value="signals">仅看需求信号</option></select>
       </div>
       <p className="text-sm text-zinc-500">找到 {filtered.length} 条 · 第 {Math.min(page, pageCount)} / {pageCount} 页</p>
+      <button type="button" disabled={filtered.length === 0} onClick={exportFiltered} className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm disabled:opacity-40">导出当前筛选结果 CSV</button>
       {visible.map(row => <article key={row.id} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-zinc-500"><span>{row.platform}</span><span>{new Date(row.collectedAt).toLocaleString()}</span><span>{row.commentId ? `评论 ID：${row.commentId}` : '未记录评论 ID'}</span></div>
         <p className="whitespace-pre-wrap leading-7">{row.text}</p>
