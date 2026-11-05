@@ -8,6 +8,7 @@ export interface Evidence {
   platform: string;
   text: string;
   sourceUrl: string;
+  commentUrl?: string;
   commentId?: string;
   contentId?: string;
   authorLabel?: string;
@@ -49,12 +50,13 @@ export function addEvidence(input: Pick<Evidence, 'platform' | 'text' | 'sourceU
   return row;
 }
 
-export function updateEvidence(id: string, status: EvidenceStatus, note: string): Evidence | null {
+export function updateEvidence(id: string, status: EvidenceStatus, note: string, commentUrl?: string): Evidence | null {
   const rows = read();
   const row = rows.find(item => item.id === id);
   if (!row) return null;
   row.status = status;
   row.note = note;
+  if (commentUrl !== undefined) row.commentUrl = commentUrl;
   write(rows);
   return row;
 }

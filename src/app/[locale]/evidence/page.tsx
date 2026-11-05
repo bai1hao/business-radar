@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { needSignals } from '@/lib/need-signals';
 
-type Row = { id: string; platform: string; text: string; sourceUrl: string; commentId?: string; authorLabel?: string; status: 'new' | 'verified' | 'contacted' | 'dismissed'; note: string; collectedAt: string };
+type Row = { id: string; platform: string; text: string; sourceUrl: string; commentUrl?: string; commentId?: string; authorLabel?: string; status: 'new' | 'verified' | 'contacted' | 'dismissed'; note: string; collectedAt: string };
 
 export default function EvidencePage() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -24,6 +24,11 @@ export default function EvidencePage() {
   async function update(row: Row, status: Row['status'], note: string) {
     await fetch('/api/evidence', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: row.id, status, note }) });
     await refresh();
+  }
+  async function saveCommentUrl(row: Row, commentUrl: string) {
+    const response = await fetch('/api/evidence', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: row.id, status: row.status, note: row.note, commentUrl }) });
+    if (!response.ok) { setError((await response.json()).error || '评论链接保存失败'); return; }
+    setError(''); await refresh();
   }
 
   const filtered = rows.filter(row =>
@@ -59,7 +64,8 @@ export default function EvidencePage() {
         <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-zinc-500"><span>{row.platform}</span><span>{new Date(row.collectedAt).toLocaleString()}</span><span>{row.commentId ? `评论 ID：${row.commentId}` : '未记录评论 ID'}</span></div>
         <p className="whitespace-pre-wrap leading-7">{row.text}</p>
         {needSignals(row.text).length > 0 && <div className="mt-3 flex flex-wrap gap-2">{needSignals(row.text).map(label => <span key={label} className="rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-800">{label}</span>)}</div>}
-        <div className="mt-4 flex flex-wrap items-center gap-4"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 underline">打开原帖</a><select aria-label="线索状态" value={row.status} onChange={e => void update(row, e.target.value as Row['status'], row.note)} className="rounded-lg border border-zinc-300 p-2 text-sm"><option value="new">待核实</option><option value="verified">已核实</option><option value="contacted">已联系</option><option value="dismissed">忽略</option></select></div>
+        <div className="mt-4 flex flex-wrap items-center gap-4"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 underline">打开原帖</a>{row.commentUrl && <a href={row.commentUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 underline">打开已保存的评论分享链接</a>}<select aria-label="线索状态" value={row.status} onChange={e => void update(row, e.target.value as Row['status'], row.note)} className="rounded-lg border border-zinc-300 p-2 text-sm"><option value="new">待核实</option><option value="verified">已核实</option><option value="contacted">已联系</option><option value="dismissed">忽略</option></select></div>
+        <input aria-label="评论分享链接" key={`${row.id}:${row.commentUrl || ''}`} defaultValue={row.commentUrl || ''} onBlur={e => { if (e.target.value !== (row.commentUrl || '')) void saveCommentUrl(row, e.target.value.trim()); }} placeholder="可选：粘贴在抖音核实过的评论分享链接，离开输入框时保存" className="mt-4 w-full rounded-lg border border-zinc-300 p-3 text-sm" />
         <textarea aria-label="线索备注" defaultValue={row.note} onBlur={e => { if (e.target.value !== row.note) void update(row, row.status, e.target.value); }} placeholder="备注：需求背景、联系进展…" className="mt-4 w-full rounded-lg border border-zinc-300 p-3 text-sm" />
       </article>)}
       {filtered.length === 0 && <p className="rounded-2xl border border-dashed border-zinc-300 p-10 text-center text-zinc-500">没有匹配的线索。换个关键词或状态试试。</p>}

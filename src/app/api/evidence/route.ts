@@ -26,6 +26,15 @@ export async function PATCH(request: NextRequest) {
   if (!body || typeof body.id !== 'string' || !statuses.includes(body.status) || typeof body.note !== 'string') {
     return NextResponse.json({ error: '无效的线索更新' }, { status: 400 });
   }
-  const row = updateEvidence(body.id, body.status, body.note);
+  if (body.commentUrl !== undefined) {
+    if (typeof body.commentUrl !== 'string') return NextResponse.json({ error: '评论链接格式无效' }, { status: 400 });
+    if (body.commentUrl) {
+      try {
+        const url = new URL(body.commentUrl);
+        if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Invalid protocol');
+      } catch { return NextResponse.json({ error: '评论链接必须是有效的网页地址' }, { status: 400 }); }
+    }
+  }
+  const row = updateEvidence(body.id, body.status, body.note, body.commentUrl);
   return row ? NextResponse.json(row) : NextResponse.json({ error: '线索不存在' }, { status: 404 });
 }
