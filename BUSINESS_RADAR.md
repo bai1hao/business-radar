@@ -4,7 +4,7 @@
 
 ## 本地运行
 
-依照上游 README 安装 Node.js、Python 与采集依赖，执行 `npm ci` 后运行 `npm run dev`，打开 `http://localhost:3000/zh/evidence`。手动录入证据不需要 Python、浏览器或模型。数据默认保存在 `.business-radar/evidence.json`，可用 `BUSINESS_RADAR_DATA_DIR` 指定独立数据目录；该目录已加入 `.gitignore`。
+依照上游 README 安装 Node.js、Python 与采集依赖，执行 `npm ci` 后运行 `npm run dev`，打开 `http://localhost:3000/zh/evidence`。采集功能建议先在项目目录运行 `python -m venv .venv`，然后在 Windows 上执行 `.\.venv\Scripts\python.exe -m pip install -r requirements.txt`；应用会优先使用该项目虚拟环境。手动录入证据不需要 Python、浏览器或模型。数据默认保存在 `.business-radar/evidence.json`，可用 `BUSINESS_RADAR_DATA_DIR` 指定独立数据目录；该目录已加入 `.gitignore`。
 
 ## 当前边界
 

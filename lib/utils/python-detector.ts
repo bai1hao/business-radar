@@ -1,5 +1,7 @@
 // Python 命令检测工具
 import { execSync } from 'child_process';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 /**
  * 检测系统中可用的 Python 命令
@@ -9,6 +11,12 @@ export function detectPythonCommand(): string {
   // 优先使用环境变量配置
   if (process.env.PYTHON_PATH) {
     return process.env.PYTHON_PATH;
+  }
+
+  const projectPython = path.join(process.cwd(), '.venv',
+    process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
+  if (existsSync(projectPython)) {
+    return projectPython;
   }
 
   // 尝试的命令列表（按优先级）
