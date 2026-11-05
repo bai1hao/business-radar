@@ -33,6 +33,7 @@ export async function GET(
       status: string;
       progress: string;
       keywords?: string[];
+      crawlStats?: { videoCount?: number; commentCount?: number; textCount?: number };
       results?: ClusterResult[];
       rawData?: {
         videos: RawVideoData[];
@@ -47,6 +48,7 @@ export async function GET(
       progress: job.progress,
       keywords: job.keywords
     };
+    response.crawlStats = job.crawlStats;
 
     // 如果任务完成，包含结果
     if (job.status === "completed" && job.results) {

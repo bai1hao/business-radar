@@ -37,6 +37,7 @@ export default function CapturePage() {
         {job.crawlStats && <p className="mt-1 text-sm text-zinc-500">视频 {job.crawlStats.videoCount || 0} · 评论 {job.crawlStats.commentCount || 0}</p>}
         {job.error && <p className="mt-2 text-sm text-red-600">{job.error}</p>}
         {job.status === 'captured' && <button onClick={() => void analyze(job.jobId)} className="mt-4 rounded-lg border border-zinc-300 px-4 py-2 text-sm hover:bg-zinc-50">开始 AI 分析</button>}
+        <Link href={`/jobs/${job.jobId}`} className="ml-3 inline-block text-sm text-amber-700 underline">查看任务详情</Link>
       </article>)}
       {jobs.length === 0 && <p className="rounded-2xl border border-dashed border-zinc-300 p-8 text-zinc-500">还没有任务。</p>}
     </section>
