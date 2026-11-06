@@ -7,7 +7,7 @@ import { GLMService } from './glm-service';
 import { PriorityScorer } from './priority-scoring';
 import { JOB_RETENTION, pruneExpiredJobs, trimOldestJobs } from './job-retention';
 import { logger } from './logger';
-import { addEvidence } from './evidence-store';
+import { addEvidenceBatch } from './evidence-store';
 import { getJobTimeoutMs, JsonJobStore, jobQueue, logJobEvent, withTimeout } from './job-runtime';
 
 // 原始视频数据接口
@@ -365,19 +365,17 @@ export class JobManager {
         rawTexts: allRawTexts
       };
       // Capture source evidence before embedding or chat analysis, which may be offline.
-      for (const comment of allComments) {
-        if (comment.video_url && comment.comment_text) {
-          addEvidence({
+      addEvidenceBatch(allComments
+        .filter(comment => comment.video_url && comment.comment_text)
+        .map(comment => ({
             platform: comment.platform || job.dataSource,
             text: comment.comment_text,
-            sourceUrl: comment.video_url,
+            sourceUrl: comment.video_url!,
             commentId: comment.comment_id,
             contentId: comment.video_id,
             authorLabel: comment.username,
             collectedAt: comment.collected_at
-          });
-        }
-      }
+          })));
       this.persistJob(job);
 
       if (allRawTexts.length === 0) {

@@ -37,17 +37,30 @@ export function listEvidence(): Evidence[] {
 }
 
 export function addEvidence(input: Pick<Evidence, 'platform' | 'text' | 'sourceUrl'> & Partial<Evidence>): Evidence {
+  return addEvidenceBatch([input])[0];
+}
+
+export function addEvidenceBatch(inputs: Array<Pick<Evidence, 'platform' | 'text' | 'sourceUrl'> & Partial<Evidence>>): Evidence[] {
+  if (inputs.length === 0) return [];
   const rows = read();
-  const existing = input.commentId && rows.find(row => row.platform === input.platform && row.commentId === input.commentId);
-  if (existing) return existing;
+  const byComment = new Map(rows.filter(row => row.commentId).map(row => [`${row.platform}:${row.commentId}`, row]));
+  const result: Evidence[] = [];
+  let changed = false;
+  for (const input of inputs) {
+    const existing = input.commentId ? byComment.get(`${input.platform}:${input.commentId}`) : undefined;
+    if (existing) { result.push(existing); continue; }
   const row: Evidence = {
     id: randomUUID(), platform: input.platform, text: input.text, sourceUrl: input.sourceUrl,
     commentId: input.commentId, contentId: input.contentId, authorLabel: input.authorLabel,
     status: 'new', note: '', collectedAt: input.collectedAt || new Date().toISOString()
   };
   rows.push(row);
-  write(rows);
-  return row;
+    if (row.commentId) byComment.set(`${row.platform}:${row.commentId}`, row);
+    result.push(row);
+    changed = true;
+  }
+  if (changed) write(rows);
+  return result;
 }
 
 export function updateEvidence(id: string, status: EvidenceStatus, note: string, commentUrl?: string): Evidence | null {
