@@ -78,6 +78,7 @@ export interface Job {
   clusteredData?: ClusteredDataGroup[];
   error?: string;
   captureOnly?: boolean;
+  captureComplete?: boolean;
 }
 
 export interface CreateJobOptions {
@@ -130,6 +131,7 @@ export class JobManager {
       douyinNewOptions,
       locale,
       captureOnly,
+      captureComplete: false,
       startTime: Date.now()
     };
 
@@ -246,6 +248,7 @@ export class JobManager {
 
       for (let i = 0; i < job.keywords.length; i++) {
         const keyword = job.keywords[i];
+        const commentStart = allComments.length;
 
         // 根据是否深度抓取选择不同的方法
         if (job.deepCrawl && dataSourceService.searchWithComments) {
@@ -348,26 +351,10 @@ export class JobManager {
           commentCount: totalCommentCount || allComments.length,
           textCount: allRawTexts.length
         };
-        this.persistJob(job);
-      }
-
-      // 保存抓取统计
-      job.crawlStats = {
-        videoCount: totalVideoCount || allVideos.length,
-        commentCount: totalCommentCount || allComments.length,
-        textCount: allRawTexts.length
-      };
-
-      // 保存原始数据
-      job.rawData = {
-        videos: allVideos,
-        comments: allComments,
-        rawTexts: allRawTexts
-      };
-      // Capture source evidence before embedding or chat analysis, which may be offline.
-      addEvidenceBatch(allComments
-        .filter(comment => comment.video_url && comment.comment_text)
-        .map(comment => ({
+        job.rawData = { videos: [...allVideos], comments: [...allComments], rawTexts: [...allRawTexts] };
+        addEvidenceBatch(allComments.slice(commentStart)
+          .filter(comment => comment.video_url && comment.comment_text)
+          .map(comment => ({
             platform: comment.platform || job.dataSource,
             text: comment.comment_text,
             sourceUrl: comment.video_url!,
@@ -376,6 +363,9 @@ export class JobManager {
             authorLabel: comment.username,
             collectedAt: comment.collected_at
           })));
+        this.persistJob(job);
+      }
+      job.captureComplete = true;
       this.persistJob(job);
 
       if (allRawTexts.length === 0) {
@@ -390,7 +380,7 @@ export class JobManager {
 
     } catch (error) {
       this.updateJobStatus(jobId, job.rawData?.rawTexts.length ? 'captured' : 'failed',
-        job.rawData?.rawTexts.length ? '分析未完成，可稍后重试' : '采集失败',
+        job.rawData?.rawTexts.length ? (job.captureComplete ? '分析未完成，可稍后重试' : '部分关键词采集失败；已保存先前结果') : '采集失败',
         error instanceof Error ? error.message : '未知错误');
     }
   }
