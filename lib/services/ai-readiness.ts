@@ -1,6 +1,6 @@
 import { getAIProviderName } from './ai-provider';
 
-export async function getAiReadiness(): Promise<{ ready: boolean; provider: string; message: string }> {
+export async function getAiReadiness(): Promise<{ ready: boolean; provider: string; message: string; models?: string[] }> {
   const provider = getAIProviderName();
   if (provider === 'glm' || provider === 'openai') {
     const configured = Boolean(process.env[provider === 'glm' ? 'GLM_API_KEY' : 'OPENAI_API_KEY']);
@@ -18,10 +18,11 @@ export async function getAiReadiness(): Promise<{ ready: boolean; provider: stri
     const chat = provider === 'lmstudio' ? process.env.LM_STUDIO_MODEL : process.env.OLLAMA_MODEL;
     const embedding = process.env.EMBEDDING_MODEL || (provider === 'lmstudio' ? process.env.LM_STUDIO_EMBEDDING_MODEL : process.env.OLLAMA_EMBEDDING_MODEL);
     const missing = [chat, embedding].filter(name => name && !available.has(name));
-    if (available.size === 0) return { ready: false, provider, message: '模型服务已连接，但未发现已加载模型' };
-    if (missing.length) return { ready: false, provider, message: `尚未加载配置的模型：${missing.join('、')}` };
-    if (!chat || !embedding) return { ready: false, provider, message: '请配置聊天模型和 embedding 模型名称' };
-    return { ready: true, provider, message: '模型服务和所需模型已就绪' };
+    const models = [...available].filter((id): id is string => Boolean(id));
+    if (available.size === 0) return { ready: false, provider, message: '模型服务已连接，但未发现已加载模型', models };
+    if (missing.length) return { ready: false, provider, message: `尚未加载配置的模型：${missing.join('、')}`, models };
+    if (!chat || !embedding) return { ready: false, provider, message: '请配置聊天模型和 embedding 模型名称', models };
+    return { ready: true, provider, message: '模型服务和所需模型已就绪', models };
   } catch {
     return { ready: false, provider, message: '无法连接本地模型服务，请先启动它' };
   }
