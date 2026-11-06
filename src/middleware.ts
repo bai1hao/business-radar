@@ -1,6 +1,7 @@
 import createIntlMiddleware from 'next-intl/middleware';
 import { NextRequest, NextResponse } from 'next/server';
 import { locales, defaultLocale } from './i18n/config';
+import { isWebOnlyMode } from '../lib/services/deployment-mode';
 
 const intl = createIntlMiddleware({ locales, defaultLocale, localeDetection: true, localePrefix: 'always' });
 
@@ -26,6 +27,10 @@ export default function middleware(request: NextRequest) {
     }
   }
   if (request.nextUrl.pathname.startsWith('/api/')) return NextResponse.next();
+  if (isWebOnlyMode() && /^\/(?:zh|en)?\/?$/.test(request.nextUrl.pathname)) {
+    const locale = request.nextUrl.pathname.startsWith('/en') ? 'en' : defaultLocale;
+    return NextResponse.redirect(new URL(`/${locale}/overview`, request.url));
+  }
   return intl(request);
 }
 

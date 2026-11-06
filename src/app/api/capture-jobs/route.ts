@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jobManager } from '../../../../lib/services/job-manager';
 import { getAiReadiness } from '../../../../lib/services/ai-readiness';
+import { isWebOnlyMode, webOnlyResponse } from '../../../../lib/services/deployment-mode';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (isWebOnlyMode()) return webOnlyResponse();
   const body = await request.json().catch(() => null);
   if (!body || typeof body.jobId !== 'string') return NextResponse.json({ error: '无效任务' }, { status: 400 });
   const readiness = await getAiReadiness();

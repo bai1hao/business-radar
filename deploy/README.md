@@ -1,14 +1,19 @@
 # Debian 12 部署草案
 
+**公网部署门槛：**当前锁文件的依赖审计仍有高危和严重告警。更新受影响的依赖并通过 `npm run security:audit` 后，才能按本文向公网开放服务。
+
 此配置用于独立域名和单机部署，不涉及现有 FRP 或远程桌面。先准备域名、HTTPS 证书和只读 GitHub 拉取凭据，再部署。`nginx.conf.example` 中的域名与证书路径需按实际值修改；不要直接复制覆盖服务器已有站点配置。
 
-服务器安装 Node.js、npm、Python 与所需浏览器依赖后，将仓库检出到 `/opt/business-radar/app`，运行 `npm ci`、`npm run build`。创建专用系统账户 `business-radar`，使 `/var/lib/business-radar` 仅对该账户可写，并在 `/etc/business-radar.env` 配置：
+第一阶段服务器只运行网页、手动证据库和需求主题；采集与 AI 分析在 Windows 本地运行。服务器仅需 Node.js 及 npm，不需安装 Python、浏览器、LM Studio 或爬虫依赖。将仓库检出到 `/opt/business-radar/app`，运行 `npm ci`、`npm run build`。创建专用系统账户 `business-radar`，使 `/var/lib/business-radar` 仅对该账户可写；构建后创建 `/opt/business-radar/app/.next/cache` 并授予该账户写权限。`systemd` 示例将其他程序目录保持只读，并明确放行这两个路径。在 `/etc/business-radar.env` 配置：
 
 ```env
 BUSINESS_RADAR_USERNAME=your-username
 BUSINESS_RADAR_PASSWORD=replace-with-a-long-random-password
 BUSINESS_RADAR_DATA_DIR=/var/lib/business-radar
 DEEPPOINT_JOB_DATA_DIR=/var/lib/business-radar/jobs
+BUSINESS_RADAR_WEB_ONLY=true
 ```
 
-环境文件权限设为仅管理员与服务账户可读。服务进程只监听 `127.0.0.1:3000`，公网仅开放 HTTPS。安装前检查服务器当前 Nginx 站点和端口，避免影响其他服务。更新时先备份 `/var/lib/business-radar`，拉取指定提交，安装依赖并构建，再重启本服务。当前版本尚未做服务器资源实测，也没有家庭 GPU 任务同步，先只部署网页和手动证据库。
+环境文件权限设为仅管理员与服务账户可读。服务进程只监听 `127.0.0.1:3000`，公网仅开放 HTTPS。安装前检查服务器当前 Nginx 站点和端口，避免影响其他服务。`BUSINESS_RADAR_WEB_ONLY=true` 时首页转到需求总览，服务器拒绝启动采集与 AI 分析任务；证据库与需求主题仍可编辑。
+
+目前没有本地电脑到云端的自动同步。要在云端查看本地采集结果，先在本地执行 `npm run backup:data`，将备份中的 `evidence.json`、`opportunities.json` 与任务目录复制到服务器数据目录；复制前先备份服务器现有数据，避免覆盖云端的手动修改。云端与本地同时编辑会产生冲突，正式同步功能完成前应指定其中一端为数据主本。更新代码时先备份 `/var/lib/business-radar`，拉取指定提交，安装依赖并构建，重新确认 `.next/cache` 权限，再重启本服务。当前版本尚未做服务器资源实测，也没有家庭 GPU 任务同步。

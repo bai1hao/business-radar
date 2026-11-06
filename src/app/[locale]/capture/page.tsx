@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 type Job = { jobId: string; status: string; progress: string; keywords: string[]; startTime: number; crawlStats?: { commentCount?: number; videoCount?: number }; error?: string };
-type Readiness = { ready: boolean; provider: string; message: string; models?: string[] };
+type Readiness = { ready: boolean; webOnly?: boolean; provider: string; message: string; models?: string[] };
 
 export default function CapturePage() {
   const [keywords, setKeywords] = useState('');
@@ -26,12 +26,12 @@ export default function CapturePage() {
   }
   return <main className="mx-auto max-w-5xl px-5 py-10">
     <p className="text-sm font-semibold text-amber-700">Business Radar</p><h1 className="mt-2 text-3xl font-semibold">采集与分析任务</h1>
-    <p className="mt-2 text-sm text-zinc-600">先采集并保存评论，模型准备好后再手动分析。采集仍需在运行本应用的电脑上启动浏览器。</p>
+    <p className="mt-2 text-sm text-zinc-600">{readiness?.webOnly ? '当前是服务器网页模式。采集与 AI 分析请在本地电脑运行；此处可查看已同步的任务记录。' : '先采集并保存评论，模型准备好后再手动分析。采集仍需在运行本应用的电脑上启动浏览器。'}</p>
     <div className="mt-5 rounded-xl border border-zinc-200 bg-white p-4 text-sm"><strong>AI 状态：</strong>{readiness ? `${readiness.provider} · ${readiness.message}` : '正在检查…'}{readiness?.models && readiness.models.length > 0 && <p className="mt-2 text-zinc-600">服务可见模型：{readiness.models.join('、')}</p>}<p className="mt-2 text-zinc-500">LM Studio：启动本地 API 服务，加载聊天和 embedding 模型，再在 .env.local 中填写两个模型 ID。</p></div>
-    <div className="mt-6 flex flex-wrap gap-3 rounded-2xl border border-zinc-200 bg-white p-5">
+    {!readiness?.webOnly && <div className="mt-6 flex flex-wrap gap-3 rounded-2xl border border-zinc-200 bg-white p-5">
       <input aria-label="关键词" value={keywords} onChange={e => setKeywords(e.target.value)} placeholder="关键词，多个用逗号分隔" className="min-w-64 flex-1 rounded-lg border border-zinc-300 p-3" />
       <button disabled={!keywords.trim()} onClick={capture} className="rounded-lg bg-zinc-900 px-5 py-3 text-white disabled:opacity-40">只采集，稍后分析</button>
-    </div>
+    </div>}
     {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     <div className="mt-5"><Link href="/evidence" className="text-sm text-amber-700 underline">查看需求证据库</Link></div>
     <section className="mt-8 space-y-3"><h2 className="text-lg font-semibold">任务记录</h2>

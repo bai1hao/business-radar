@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jobManager } from '../../../../lib/services/job-manager';
 import { DEFAULT_DATA_SOURCE, isDataSourceType } from '../../../../lib/services/data-source-interface';
+import { isWebOnlyMode, webOnlyResponse } from '../../../../lib/services/deployment-mode';
 import {
   normalizeBoolean,
   normalizeDouyinNewOptions,
@@ -12,6 +13,7 @@ import {
 } from '../../../../lib/services/request-validation';
 
 export async function POST(request: NextRequest) {
+  if (isWebOnlyMode()) return webOnlyResponse();
   try {
     const bodyResult = await parseJsonObject(request);
     if (!bodyResult.ok) {
