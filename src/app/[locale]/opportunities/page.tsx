@@ -1,0 +1,43 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+
+type Evidence = { id: string; text: string; sourceUrl: string; commentUrl?: string; status: string };
+type Opportunity = { id: string; title: string; note: string; evidenceIds: string[]; updatedAt: string };
+
+export default function OpportunitiesPage() {
+  const [themes, setThemes] = useState<Opportunity[]>([]);
+  const [evidence, setEvidence] = useState<Evidence[]>([]);
+  const [title, setTitle] = useState('');
+  const [search, setSearch] = useState('');
+  const [activeId, setActiveId] = useState('');
+  const [error, setError] = useState('');
+  const refresh = async () => {
+    const [a, b] = await Promise.all([fetch('/api/opportunities', { cache: 'no-store' }), fetch('/api/evidence', { cache: 'no-store' })]);
+    if (!a.ok || !b.ok) { setError('加载需求主题失败'); return; }
+    setThemes(await a.json()); setEvidence(await b.json());
+  };
+  useEffect(() => { void refresh(); }, []);
+
+  async function create() {
+    const response = await fetch('/api/opportunities', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }) });
+    if (!response.ok) { setError((await response.json()).error); return; }
+    setTitle(''); setError(''); await refresh();
+  }
+  async function update(id: string, changes: Record<string, string>) {
+    const response = await fetch('/api/opportunities', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...changes }) });
+    if (!response.ok) { setError((await response.json()).error); return; }
+    setError(''); await refresh();
+  }
+  const byId = new Map(evidence.map(row => [row.id, row]));
+  const matches = search.trim() ? evidence.filter(row => row.text.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).slice(0, 10) : [];
+
+  return <main className="mx-auto max-w-5xl px-5 py-10">
+    <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-semibold text-amber-700">Business Radar</p><h1 className="mt-2 text-3xl font-semibold">需求主题</h1><p className="mt-2 text-sm text-zinc-600">把多条评论归到同一个待验证需求，保留每条原始证据。</p></div><Link href="/evidence" className="text-sm text-amber-700 underline">查看证据库</Link></div>
+    {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+    <section className="mt-7 rounded-2xl border border-zinc-200 bg-white p-5"><h2 className="font-semibold">新建需求主题</h2><div className="mt-3 flex gap-3"><input aria-label="主题名称" value={title} onChange={e => setTitle(e.target.value)} placeholder="例如：每月报表需要自动汇总" className="min-w-0 flex-1 rounded-lg border border-zinc-300 p-3" /><button disabled={!title.trim()} onClick={create} className="rounded-lg bg-zinc-900 px-5 py-2 text-white disabled:opacity-40">创建</button></div></section>
+    {themes.length > 0 && <section className="mt-5 rounded-2xl border border-zinc-200 bg-white p-5"><h2 className="font-semibold">添加原始证据</h2><div className="mt-3 grid gap-3 sm:grid-cols-2"><select aria-label="目标主题" value={activeId} onChange={e => setActiveId(e.target.value)} className="rounded-lg border border-zinc-300 p-3"><option value="">选择主题</option>{themes.map(theme => <option key={theme.id} value={theme.id}>{theme.title}</option>)}</select><input aria-label="搜索评论" value={search} onChange={e => setSearch(e.target.value)} placeholder="输入评论关键词" className="rounded-lg border border-zinc-300 p-3" /></div><div className="mt-3 divide-y divide-zinc-100">{matches.map(row => <div key={row.id} className="flex items-start justify-between gap-4 py-3"><p className="line-clamp-2 text-sm">{row.text}</p><button disabled={!activeId || themes.find(theme => theme.id === activeId)?.evidenceIds.includes(row.id)} onClick={() => void update(activeId, { addEvidenceId: row.id })} className="shrink-0 rounded-lg border border-zinc-300 px-3 py-1 text-sm disabled:opacity-40">加入</button></div>)}</div></section>}
+    <section className="mt-8 space-y-5"><h2 className="text-lg font-semibold">已归并主题 · {themes.length}</h2>{themes.map(theme => <article key={theme.id} className="rounded-2xl border border-zinc-200 bg-white p-6"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="text-lg font-semibold">{theme.title}</h3><span className="text-sm text-zinc-500">{theme.evidenceIds.length} 条证据</span></div><textarea aria-label={`${theme.title}备注`} key={`${theme.id}:${theme.note}`} defaultValue={theme.note} onBlur={e => { if (e.target.value !== theme.note) void update(theme.id, { note: e.target.value }); }} placeholder="记录共同问题、现有替代办法、待验证假设…" className="mt-4 w-full rounded-lg border border-zinc-300 p-3 text-sm" /><div className="mt-4 divide-y divide-zinc-100">{theme.evidenceIds.map(id => { const row = byId.get(id); return row && <div key={id} className="py-3"><p className="text-sm leading-6">{row.text}</p><div className="mt-2 flex gap-4"><a href={row.commentUrl || row.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline">打开来源</a><button onClick={() => void update(theme.id, { removeEvidenceId: id })} className="text-xs text-zinc-500 underline">从主题移除</button></div></div>; })}</div></article>)}{themes.length === 0 && <p className="rounded-2xl border border-dashed border-zinc-300 p-8 text-zinc-500">先创建一个需求主题，再关联评论证据。</p>}</section>
+  </main>;
+}

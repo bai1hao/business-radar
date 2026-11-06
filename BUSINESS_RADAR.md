@@ -4,6 +4,8 @@
 
 证据库可按原文、备注、状态搜索筛选，并用本地关键词规则标出“重复劳动”“明确求工具”等需求信号。规则只提供浏览提示，不代表需求已验证；未命中的评论仍会保留。
 
+`/zh/opportunities` 可人工创建需求主题，并把多条评论关联为同一主题的证据。主题备注可以记录共同场景和待验证假设；从主题移除评论不会删除原始证据。主题保存在 `.business-radar/opportunities.json`，备份命令会一并复制该文件。
+
 ## 本地运行
 
 依照上游 README 安装 Node.js、Python 与采集依赖，执行 `npm ci` 后运行 `npm run dev`，打开 `http://localhost:3000/zh/evidence`。采集功能建议先在项目目录运行 `python -m venv .venv`，然后在 Windows 上执行 `.\.venv\Scripts\python.exe -m pip install -r requirements.txt`；应用会优先使用该项目虚拟环境。手动录入证据不需要 Python、浏览器或模型。数据默认保存在 `.business-radar/evidence.json`，可用 `BUSINESS_RADAR_DATA_DIR` 指定独立数据目录；该目录已加入 `.gitignore`。

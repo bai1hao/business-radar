@@ -246,6 +246,7 @@ export default function Home() {
           <Link href="/evidence" className="hover:text-[#18181B] transition">需求证据库</Link>
           <Link href="/capture" className="hover:text-[#18181B] transition">采集任务</Link>
           <Link href="/overview" className="hover:text-[#18181B] transition">需求总览</Link>
+          <Link href="/opportunities" className="hover:text-[#18181B] transition">需求主题</Link>
         </div>
         <div className="flex items-center gap-3">
           <LanguageSwitcher />
