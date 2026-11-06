@@ -8,6 +8,8 @@
 
 依照上游 README 安装 Node.js、Python 与采集依赖，执行 `npm ci` 后运行 `npm run dev`，打开 `http://localhost:3000/zh/evidence`。采集功能建议先在项目目录运行 `python -m venv .venv`，然后在 Windows 上执行 `.\.venv\Scripts\python.exe -m pip install -r requirements.txt`；应用会优先使用该项目虚拟环境。手动录入证据不需要 Python、浏览器或模型。数据默认保存在 `.business-radar/evidence.json`，可用 `BUSINESS_RADAR_DATA_DIR` 指定独立数据目录；该目录已加入 `.gitignore`。
 
+运行 `npm run backup:data` 可将证据文件和任务 JSON 保存到 `.business-radar-backups/` 下的独立时间戳目录；备份目录不进入 Git。可用 `BUSINESS_RADAR_BACKUP_DIR` 指定其他备份位置。恢复时先停止网页服务，再将备份文件复制回原数据目录。公网部署前应把备份目录放在应用目录之外，并安排定期备份。
+
 ## LM Studio 按需分析
 
 在 LM Studio 中加载一个聊天模型和一个 embedding 模型，启动本地 API 服务。打开 `http://localhost:1234/v1/models` 查看服务实际返回的模型 ID。然后在项目根目录新建 `.env.local`（不要提交到 Git）：
