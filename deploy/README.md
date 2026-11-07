@@ -16,4 +16,4 @@ BUSINESS_RADAR_WEB_ONLY=true
 
 环境文件权限设为仅管理员与服务账户可读。服务进程只监听 `127.0.0.1:3000`，公网仅开放 HTTPS。安装前检查服务器当前 Nginx 站点和端口，避免影响其他服务。`BUSINESS_RADAR_WEB_ONLY=true` 时首页转到需求总览，服务器拒绝启动采集与 AI 分析任务；证据库与需求主题仍可编辑。
 
-目前没有本地电脑到云端的自动同步。首次导入时，先在本地执行 `npm run backup:data`，将生成的整个备份目录传到服务器。停止网页服务后，在服务器设置与服务一致的 `BUSINESS_RADAR_DATA_DIR` 和 `DEEPPOINT_JOB_DATA_DIR`，以服务账户执行 `npm run import:data -- <备份目录>`，然后启动服务。导入前会检查所有文件和 JSON 格式；目标已存在时直接拒绝，避免覆盖云端修改。再次导入新数据前，需要先设计增量合并，不能直接覆盖。更新代码时先备份 `/var/lib/business-radar`，拉取指定提交，安装依赖并构建，重新确认 `.next/cache` 权限，再重启本服务。当前版本尚未做服务器资源实测，也没有家庭 GPU 任务自动同步。
+目前没有本地电脑到云端的自动同步。在本地执行 `npm run backup:data`，将生成的整个备份目录传到服务器。停止网页服务并备份 `/var/lib/business-radar` 后，在服务器设置与服务一致的 `BUSINESS_RADAR_DATA_DIR` 和 `DEEPPOINT_JOB_DATA_DIR`，以服务账户执行首次导入 `npm run import:data -- <备份目录>`；后续新增数据使用 `npm run import:data -- <备份目录> --merge`，再启动服务。增量导入按 ID 追加新证据和主题；同 ID 的云端核实状态、备注和主题内容保留。已有任务文件也保留，不会覆盖本地后续分析结果。更新代码时先备份 `/var/lib/business-radar`，拉取指定提交，安装依赖并构建，重新确认 `.next/cache` 权限，再重启本服务。当前版本尚未做服务器资源实测，也没有家庭 GPU 任务自动同步。
