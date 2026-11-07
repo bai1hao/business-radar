@@ -426,6 +426,10 @@ export class JobManager {
         );
       }
 
+      if (commentTexts.length >= 30 && commentClusters.length === 1 && commentClusters[0].length / commentTexts.length > 0.8) {
+        throw new Error('评论被合并成一个过于笼统的主题，结果不足以判断具体需求；请收窄关键词或更换适合中文的 embedding 模型');
+      }
+
       logger.info(`总聚类数: ${clusters.length} (视频: ${videoClusters.length}, 评论: ${commentClusters.length})`);
       if (clusters.length < 3) {
         logger.warn(`聚类数量较少(${clusters.length}个)，可能需要更多数据或调整关键词以获得更丰富的分析结果`);

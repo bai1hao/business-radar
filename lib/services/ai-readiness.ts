@@ -12,7 +12,10 @@ export async function getAiReadiness(): Promise<{ ready: boolean; provider: stri
     : process.env.OLLAMA_BASE_URL || 'http://localhost:11434/v1';
   const apiKey = provider === 'lmstudio' ? process.env.LM_STUDIO_API_KEY : process.env.OLLAMA_API_KEY;
   try {
-    const response = await fetch(`${base.replace(/\/+$/, '')}/models`, {
+    const modelsUrl = provider === 'lmstudio'
+      ? new URL('/api/v1/models', base).toString()
+      : `${base.replace(/\/+$/, '')}/models`;
+    const response = await fetch(modelsUrl, {
       signal: AbortSignal.timeout(3000), cache: 'no-store',
       headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined
     });
@@ -20,13 +23,21 @@ export async function getAiReadiness(): Promise<{ ready: boolean; provider: stri
       return { ready: false, provider, message: provider === 'lmstudio' ? 'LM Studio 要求 API Token，请配置 LM_STUDIO_API_KEY' : '模型服务认证失败，请检查 API Key' };
     }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json() as { data?: Array<{ id?: string }> };
-    const available = new Set((data.data || []).map(model => model.id));
+    const data = await response.json() as {
+      data?: Array<{ id?: string }>;
+      models?: Array<{ key?: string; loaded_instances?: Array<{ id?: string }> }>;
+    };
+    const loaded = provider === 'lmstudio'
+      ? (data.models || []).filter(model => model.loaded_instances?.length)
+      : [];
+    const available = new Set(provider === 'lmstudio'
+      ? loaded.flatMap(model => [model.key, ...(model.loaded_instances || []).map(instance => instance.id)])
+      : (data.data || []).map(model => model.id));
     const chat = provider === 'lmstudio' ? process.env.LM_STUDIO_MODEL : process.env.OLLAMA_MODEL;
     const embedding = process.env.EMBEDDING_MODEL || (provider === 'lmstudio' ? process.env.LM_STUDIO_EMBEDDING_MODEL : process.env.OLLAMA_EMBEDDING_MODEL);
     const missing = [chat, embedding].filter(name => name && !available.has(name));
     const models = [...available].filter((id): id is string => Boolean(id));
-    if (available.size === 0) return { ready: false, provider, message: '模型服务已连接，但未发现已加载模型', models };
+    if (models.length === 0) return { ready: false, provider, message: '模型服务已连接，但未发现已加载模型', models };
     if (missing.length) return { ready: false, provider, message: `尚未加载配置的模型：${missing.join('、')}`, models };
     if (!chat || !embedding) return { ready: false, provider, message: '请配置聊天模型和 embedding 模型名称', models };
     return { ready: true, provider, message: '模型服务和所需模型已就绪', models };
