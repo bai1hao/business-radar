@@ -12,6 +12,7 @@
     "security:audit": "npm audit --audit-level=moderate",
     "python:check": "python -m compileall lib",
     "backup:data": "node scripts/backup-data.mjs",
+    "import:data": "node scripts/import-backup.mjs",
     "check": "npm run lint && npm run typecheck && npm run build && npm run python:check"
   },
   "engines": {
@@ -19,9 +20,9 @@
     "npm": ">=9"
   },
   "dependencies": {
-    "axios": "^1.18.1",
+    "axios": "^1.21.0",
     "lucide-react": "^0.562.0",
-    "next": "^15.5.20",
+    "next": "^15.5.29",
     "next-intl": "^4.13.1",
     "react": "19.2.7",
     "react-dom": "19.2.7",
@@ -29,16 +30,21 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.3.4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "^15.5.20",
+    "eslint-config-next": "^15.5.29",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
   "overrides": {
-    "postcss": "8.5.16"
+    "postcss": "8.5.32",
+    "@typescript-eslint/eslint-plugin": "8.72.1",
+    "@typescript-eslint/parser": "8.72.1",
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.5"
+    }
   }
 }
