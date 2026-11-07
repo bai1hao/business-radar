@@ -111,6 +111,8 @@ export class GLMService {
 ✓ 产品方案要具体可执行，不要空洞概念
 ✓ 竞品分析基于你的知识，不确定的标注"需进一步调研"
 ✓ 如果数据量小（${dataSize}<50），在相关字段中提醒"需要更多数据验证"
+✓ 付费意愿必须有原文证据；仅有重复痛点或想要某功能，不能评为 High
+✓ 原文没有明确的购买、付费或预算表态时，将 paid_interest 设为 Medium，并说明尚需验证
 ✓ MVP方案要接地气，不要假大空
 
 【待分析文本】
@@ -193,10 +195,14 @@ ${texts.join('\n\n')}
 
         // 验证必需字段
         // 验证并填充默认值
+        const claimedInterest = ['High', 'Medium', 'Low'].includes(parsed.paid_interest) ? parsed.paid_interest : 'Medium';
+        const paymentEvidence = texts.some(text => /付费|愿意花|愿意买|花钱|购买|订阅|预算|报价|价格|多少钱|收费|买一个/.test(text));
+        const paidInterest = claimedInterest === 'High' && !paymentEvidence ? 'Medium' : claimedInterest;
+        const rationale = parsed.rationale || '基于用户评论内容分析';
         const result: DeepAnalysisResult = {
           one_line_pain: parsed.one_line_pain || '用户存在某种需求痛点',
-          paid_interest: (['High', 'Medium', 'Low'].includes(parsed.paid_interest) ? parsed.paid_interest : 'Medium') as 'High' | 'Medium' | 'Low',
-          rationale: parsed.rationale || '基于用户评论内容分析',
+          paid_interest: paidInterest as 'High' | 'Medium' | 'Low',
+          rationale: paidInterest !== claimedInterest ? `${rationale}；原文未见明确付费表态，付费意愿需进一步验证` : rationale,
           potential_product: parsed.potential_product || '针对用户需求的解决方案',
 
           pain_depth: {
@@ -240,99 +246,11 @@ ${texts.join('\n\n')}
       } catch (parseError) {
         logger.error('JSON解析失败:', parseError);
         logger.debug('原始响应:', content);
-
-        // 如果无法解析为JSON，返回基础结构
-        return {
-          one_line_pain: this.extractFromText(content, '痛点') || content.substring(0, 50) + '...',
-          paid_interest: 'Medium' as const,
-          rationale: '基于AI文本分析结果（JSON解析失败）',
-          potential_product: this.extractFromText(content, '产品') || '需要进一步分析的产品概念',
-
-          pain_depth: {
-            surface_pain: '解析失败，请查看原文',
-            root_causes: ['JSON格式错误'],
-            user_scenarios: ['无法提取'],
-            emotional_intensity: 2
-          },
-
-          market_landscape: {
-            existing_solutions: [{ name: '解析失败', limitation: '无法提取' }],
-            unmet_needs: ['解析失败'],
-            opportunity: '解析失败'
-          },
-
-          mvp_plan: {
-            core_features: ['解析失败'],
-            validation_hypotheses: [{ hypothesis: '解析失败', test_method: '解析失败' }],
-            first_users: '解析失败',
-            timeline: '解析失败',
-            estimated_cost: '解析失败'
-          },
-
-          keyword_relevance: 50,
-          market_size_score: 2.5
-        };
+        throw new Error('AI 返回内容不是有效 JSON，请重试分析');
       }
     } catch (apiError) {
       logger.error(`${this.provider.provider} API调用失败:`, apiError);
-
-      // 返回基于文本内容的默认分析
-      return {
-        one_line_pain: this.generateDefaultPain(texts),
-        paid_interest: 'Medium' as const,
-        rationale: 'AI API调用失败，基于文本内容推断',
-        potential_product: '基于用户需求的数字化解决方案',
-
-        pain_depth: {
-          surface_pain: this.generateDefaultPain(texts),
-          root_causes: ['API调用失败，无法深度分析'],
-          user_scenarios: ['相关领域用户使用场景'],
-          emotional_intensity: 2
-        },
-
-        market_landscape: {
-          existing_solutions: [{ name: 'API调用失败', limitation: '无法获取竞品信息' }],
-          unmet_needs: ['需要进一步调研'],
-          opportunity: 'API调用失败，无法评估'
-        },
-
-        mvp_plan: {
-          core_features: ['API调用失败'],
-          validation_hypotheses: [{ hypothesis: 'API调用失败', test_method: '无法提供' }],
-          first_users: 'API调用失败',
-          timeline: 'API调用失败',
-          estimated_cost: 'API调用失败'
-        },
-
-        keyword_relevance: 50,
-        market_size_score: 2.5
-      };
+      throw apiError;
     }
-  }
-
-  private extractFromText(text: string, keyword: string): string | null {
-    const lines = text.split('\n');
-    for (const line of lines) {
-      if (line.includes(keyword)) {
-        return line.replace(/["""]/g, '').trim();
-      }
-    }
-    return null;
-  }
-
-  private generateDefaultPain(texts: string[]): string {
-    // 基于文本内容生成默认痛点描述
-    if (texts.length === 0) return '用户需求待分析';
-
-    const commonKeywords = ['问题', '困难', '不知道', '怎么办', '求助', '请教'];
-    const hasProblems = texts.some(text =>
-      commonKeywords.some(keyword => text.includes(keyword))
-    );
-
-    if (hasProblems) {
-      return '用户在相关领域遇到问题，寻求解决方案和指导';
-    }
-
-    return '用户对相关主题有兴趣和需求，期待更好的体验';
   }
 }

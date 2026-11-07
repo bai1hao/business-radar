@@ -141,6 +141,8 @@ npm run start
 
 `EMBEDDING_PROVIDER` 默认跟随 `AI_PROVIDER`，也可以单独指定。语义聚类依赖 embedding 模型，使用 Ollama 时建议先执行 `ollama pull llama3.1` 和 `ollama pull nomic-embed-text`。
 
+LM Studio 实测配置：在 `.env.local` 设置 `AI_PROVIDER=lmstudio`、`LM_STUDIO_MODEL=qwen/qwen3.5-9b`、`LM_STUDIO_EMBEDDING_MODEL=text-embedding-nomic-embed-text-v1.5`，并加载两个模型。Qwen 9B 建议使用至少 8192 token 的上下文；4096 token 下完整 JSON 分析曾返回空内容。若 LM Studio 开启 API Token 认证，还需设置 `LM_STUDIO_API_KEY`。令牌只保存在被 Git 忽略的 `.env.local`，不要写入仓库。分析失败时已采集数据会保留，可在任务页重试。
+
 ### 语言切换
 
 - 页面右上角点击语言切换器可切换中文/英文
