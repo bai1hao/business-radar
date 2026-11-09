@@ -1,10 +1,10 @@
-import { getAIProviderName } from './ai-provider';
+import { AIProviderName, getAIProviderName } from './ai-provider';
 
-export async function getAiReadiness(): Promise<{ ready: boolean; provider: string; message: string; models?: string[] }> {
-  const provider = getAIProviderName();
+export async function getAiReadiness(providerOverride?: AIProviderName): Promise<{ ready: boolean; provider: string; message: string; models?: string[] }> {
+  const provider = providerOverride || getAIProviderName();
   if (provider === 'glm' || provider === 'openai') {
     const configured = Boolean(process.env[provider === 'glm' ? 'GLM_API_KEY' : 'OPENAI_API_KEY']);
-    return { ready: configured, provider, message: configured ? '已配置 API 密钥；尚未验证模型连接' : '尚未配置 API 密钥' };
+    return { ready: configured, provider, message: configured ? '已配置云端 API 密钥；分析时验证连接' : '尚未配置云端 API 密钥' };
   }
 
   const base = provider === 'lmstudio'
@@ -42,6 +42,6 @@ export async function getAiReadiness(): Promise<{ ready: boolean; provider: stri
     if (!chat || !embedding) return { ready: false, provider, message: '请配置聊天模型和 embedding 模型名称', models };
     return { ready: true, provider, message: '模型服务和所需模型已就绪', models };
   } catch {
-    return { ready: false, provider, message: '无法连接本地模型服务，请先启动它' };
+    return { ready: false, provider, message: '无法连接模型服务，请确认服务地址、网络和模型状态' };
   }
 }

@@ -1,5 +1,5 @@
 // AI产品分析服务
-import { AIChatProvider, createAIChatProvider, getAIProviderName } from './ai-provider';
+import { AIChatProvider, AIProviderName, createAIChatProvider, getAIProviderName } from './ai-provider';
 
 export interface AIProductAnalysis {
   product_name: string;
@@ -24,11 +24,11 @@ export interface AIProductResult {
 export class AIProductService {
   private provider: AIChatProvider;
 
-  constructor() {
-    const providerName = getAIProviderName();
-    const modelOverride = process.env.AI_PRODUCT_MODEL_NAME ||
+  constructor(providerOverride?: AIProviderName) {
+    const providerName = providerOverride || getAIProviderName();
+    const modelOverride = (providerOverride && providerOverride !== getAIProviderName() ? undefined : process.env.AI_PRODUCT_MODEL_NAME) ||
       (providerName === 'glm' ? (process.env.GLM_MODEL_NAME || 'glm-4-flash') : undefined);
-    this.provider = createAIChatProvider(modelOverride);
+    this.provider = createAIChatProvider(modelOverride, providerName);
   }
 
   async analyzeForAIProduct(texts: string[], locale: string = 'zh'): Promise<AIProductAnalysis> {
@@ -53,9 +53,8 @@ export class AIProductService {
       const analysis = this.parseAIProductResponse(content);
       return analysis;
 
-    } catch {
-      // 返回默认分析结果
-      return this.getDefaultAnalysis();
+    } catch (error) {
+      throw new Error(`AI 产品分析失败：${error instanceof Error ? error.message : '模型服务返回异常'}`);
     }
   }
 
@@ -133,35 +132,5 @@ ${textsContent}
     return 'Medium';
   }
 
-  private getDefaultAnalysis(): AIProductAnalysis {
-    return {
-      product_name: '基于用户需求的AI助手',
-      product_category: 'AI智能助手',
-      target_users: '基于用户评论分析的目标群体',
-      core_features: [
-        '智能问答',
-        '内容推荐',
-        '数据分析'
-      ],
-      ai_capabilities: [
-        '自然语言处理',
-        '机器学习推荐',
-        '情感分析'
-      ],
-      value_proposition: '通过AI技术解决用户核心需求，提升效率和体验',
-      implementation_difficulty: 'Medium',
-      market_potential: 'Medium',
-      technical_stack: [
-        'OpenAI API / 本地LLM',
-        'Vector Database',
-        'Python/TypeScript'
-      ],
-      development_roadmap: [
-        'MVP版本：核心功能实现',
-        '优化版本：用户体验提升',
-        '扩展版本：功能丰富和商业化'
-      ]
-    };
-  }
 }
 

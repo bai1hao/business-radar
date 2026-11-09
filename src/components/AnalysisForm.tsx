@@ -20,7 +20,8 @@ interface AnalysisFormProps {
     dataSource: DataSourceType,
     deepCrawl: boolean,
     maxVideos: number,
-    douyinNewConfig?: DouyinNewConfig
+    douyinNewConfig?: DouyinNewConfig,
+    aiProvider?: 'glm' | 'openai' | 'ollama' | 'lmstudio'
   ) => void;
   isLoading: boolean;
 }
@@ -31,6 +32,7 @@ export default function AnalysisForm({ onSubmit, isLoading }: AnalysisFormProps)
   const [dataSource, setDataSource] = useState<DataSourceType>('douyin_new');
   const [deepCrawl, setDeepCrawl] = useState(false);
   const [maxVideos, setMaxVideos] = useState(5);
+  const [aiProvider, setAiProvider] = useState<'default' | 'glm' | 'openai' | 'ollama' | 'lmstudio'>('default');
 
   // 新版抖音专用配置
   const [douyinNewConfig, setDouyinNewConfig] = useState<DouyinNewConfig>({
@@ -56,9 +58,9 @@ export default function AnalysisForm({ onSubmit, isLoading }: AnalysisFormProps)
 
     if (keywordArray.length > 0) {
       if (dataSource === 'douyin_new') {
-        onSubmit(keywordArray, dataSource, douyinNewConfig.enableComments, douyinNewConfig.maxVideos, douyinNewConfig);
+        onSubmit(keywordArray, dataSource, douyinNewConfig.enableComments, douyinNewConfig.maxVideos, douyinNewConfig, aiProvider === 'default' ? undefined : aiProvider);
       } else {
-        onSubmit(keywordArray, dataSource, deepCrawl, maxVideos);
+        onSubmit(keywordArray, dataSource, deepCrawl, maxVideos, undefined, aiProvider === 'default' ? undefined : aiProvider);
       }
     }
   };
@@ -74,6 +76,7 @@ export default function AnalysisForm({ onSubmit, isLoading }: AnalysisFormProps)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      <label className="block text-sm font-medium text-zinc-700">分析模型来源<select aria-label="分析模型来源" value={aiProvider} onChange={e => setAiProvider(e.target.value as typeof aiProvider)} disabled={isLoading} className="mt-2 w-full rounded-lg border border-zinc-300 bg-white p-3"><option value="default">使用服务端默认配置</option><option value="lmstudio">LM Studio（本机或隧道）</option><option value="glm">云端 GLM</option><option value="openai">云端 OpenAI 兼容 API</option><option value="ollama">Ollama（本机或隧道）</option></select></label>
       {/* 数据源选择 */}
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">

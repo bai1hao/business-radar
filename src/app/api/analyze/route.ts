@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { jobManager } from '../../../../lib/services/job-manager';
 import { DEFAULT_DATA_SOURCE, isDataSourceType } from '../../../../lib/services/data-source-interface';
 import { isWebOnlyMode, webOnlyResponse } from '../../../../lib/services/deployment-mode';
+import { getAIProviderName, isAIProviderName } from '../../../../lib/services/ai-provider';
+import { getAiReadiness } from '../../../../lib/services/ai-readiness';
 import {
   normalizeBoolean,
   normalizeDouyinNewOptions,
@@ -51,6 +53,13 @@ export async function POST(request: NextRequest) {
     const limit = normalizeInteger(body.limit, REQUEST_LIMITS.analysisLimit);
     const maxVideos = normalizeInteger(body.maxVideos, REQUEST_LIMITS.legacyDeepCrawlVideos);
     const locale = normalizeLocale(body.locale);
+    const aiProvider = body.aiProvider === undefined ? getAIProviderName() : body.aiProvider;
+    if (!isAIProviderName(aiProvider)) return NextResponse.json({ error: '不支持的模型来源' }, { status: 400 });
+    const captureOnly = normalizeBoolean(body.captureOnly, false);
+    if (!captureOnly) {
+      const readiness = await getAiReadiness(aiProvider);
+      if (!readiness.ready) return NextResponse.json({ error: readiness.message }, { status: 503 });
+    }
 
     // 深度抓取支持抖音和新版抖音
     const enableDeepCrawl = requestedDeepCrawl && (dataSource === 'douyin' || dataSource === 'douyin_new');
@@ -70,7 +79,8 @@ export async function POST(request: NextRequest) {
       maxVideos,
       douyinNewOptions,
       locale,
-      normalizeBoolean(body.captureOnly, false)
+      captureOnly,
+      aiProvider
     );
 
     // 立即返回任务ID，不等待任务完成

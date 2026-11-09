@@ -9,6 +9,7 @@ import { JOB_RETENTION, pruneExpiredJobs, trimOldestJobs } from './job-retention
 import { logger } from './logger';
 import { addEvidenceBatch } from './evidence-store';
 import { getJobTimeoutMs, JsonJobStore, jobQueue, logJobEvent, withTimeout } from './job-runtime';
+import { AIProviderName, getAIProviderName } from './ai-provider';
 
 // 原始视频数据接口
 export interface RawVideoData {
@@ -81,6 +82,7 @@ export interface Job {
   error?: string;
   captureOnly?: boolean;
   captureComplete?: boolean;
+  aiProvider?: AIProviderName;
 }
 
 export interface CreateJobOptions {
@@ -94,8 +96,6 @@ export interface CreateJobOptions {
 export class JobManager {
   private jobs: Map<string, Job>;
   private jobStore: JsonJobStore<Job>;
-  private clusteringService: ClusteringService;
-  private glmService: GLMService;
   private priorityScorer: PriorityScorer;
   private timedOutJobs: Set<string> = new Set();
 
@@ -103,8 +103,6 @@ export class JobManager {
     this.jobStore = new JsonJobStore<Job>('analysis');
     this.jobs = this.jobStore.loadAll();
     this.cleanupExpiredJobs();
-    this.clusteringService = new ClusteringService();
-    this.glmService = new GLMService();
     this.priorityScorer = new PriorityScorer();
   }
 
@@ -117,7 +115,8 @@ export class JobManager {
     maxVideos: number = 10,
     douyinNewOptions?: DouyinNewCrawlOptions,
     locale: string = 'zh',
-    captureOnly: boolean = false
+    captureOnly: boolean = false,
+    aiProvider: AIProviderName = getAIProviderName()
   ): string {
     this.cleanupExpiredJobs();
 
@@ -135,6 +134,7 @@ export class JobManager {
       locale,
       captureOnly,
       captureComplete: false,
+      aiProvider,
       startTime: Date.now()
     };
 
@@ -184,10 +184,11 @@ export class JobManager {
     return [...this.jobs.values()].sort((a, b) => b.startTime - a.startTime);
   }
 
-  public analyzeCapturedJob(jobId: string): boolean {
+  public analyzeCapturedJob(jobId: string, aiProvider: AIProviderName = getAIProviderName()): boolean {
     const job = this.jobs.get(jobId);
     if (!job || job.status !== 'captured' || !job.rawData?.rawTexts.length) return false;
     job.captureOnly = false;
+    job.aiProvider = aiProvider;
     this.updateJobStatus(jobId, 'processing', '等待分析...');
     jobQueue.run(jobId, 'analysis', () => withTimeout(this.executeJob(jobId), getJobTimeoutMs(), '分析超时'),
       () => this.updateJobStatus(jobId, 'processing', '正在分析已采集数据...'))
@@ -395,6 +396,8 @@ export class JobManager {
   private async analyzeStoredJob(jobId: string): Promise<void> {
     const job = this.jobs.get(jobId);
     if (!job?.rawData) throw new Error('没有可分析的已采集数据');
+    const clusteringService = new ClusteringService(job.aiProvider || getAIProviderName());
+    const glmService = new GLMService(job.aiProvider || getAIProviderName());
     const { videos: allVideos, comments: allComments, rawTexts: allRawTexts } = job.rawData;
     const textToSourceMap = new Map<string, { type: 'video' | 'comment'; data: RawVideoData | RawCommentData }>();
     for (const video of allVideos) if (video.title) textToSourceMap.set(video.title, { type: 'video', data: video });
@@ -408,7 +411,7 @@ export class JobManager {
       if (videoTexts.length > 0) {
         this.updateJobStatus(jobId, 'processing', `正在对 ${videoTexts.length} 条视频内容进行聚类...`);
         // 不传递 minClusterSize，让 Python 自动计算 min_samples
-        videoClusters = await this.clusteringService.clusterTexts(videoTexts);
+        videoClusters = await clusteringService.clusterTexts(videoTexts);
         logger.info(`视频聚类完成: ${videoClusters.length} 个聚类`);
       }
 
@@ -418,7 +421,7 @@ export class JobManager {
       if (commentTexts.length > 0) {
         this.updateJobStatus(jobId, 'processing', `正在对 ${commentTexts.length} 条评论内容进行聚类...`);
         // 不传递 minClusterSize，让 Python 自动计算 min_samples
-        commentClusters = await this.clusteringService.clusterTexts(commentTexts);
+        commentClusters = await clusteringService.clusterTexts(commentTexts);
         logger.info(`评论聚类完成: ${commentClusters.length} 个聚类`);
       }
 
@@ -489,11 +492,11 @@ export class JobManager {
 
       for (let i = 0; i < clusters.length; i++) {
         const cluster = clusters[i];
-        const representativeTexts = this.clusteringService.getRepresentativeTexts(cluster, 8);
+        const representativeTexts = clusteringService.getRepresentativeTexts(cluster, 8);
 
         try {
           // 调用 AI provider 分析聚类（传递关键词、数据规模和语言）
-          const analysis = await this.glmService.analyzeCluster(
+          const analysis = await glmService.analyzeCluster(
             representativeTexts,
             job.keywords,
             allRawTexts.length,
@@ -510,7 +513,7 @@ export class JobManager {
           });
 
           const result: ClusterResult = {
-            id: this.clusteringService.generateClusterId(i),
+            id: clusteringService.generateClusterId(i),
             size: cluster.length,
             analysis: {
               one_line_pain: analysis.one_line_pain || '用户痛点待分析',

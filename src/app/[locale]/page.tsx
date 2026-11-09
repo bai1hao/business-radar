@@ -167,7 +167,8 @@ export default function Home() {
     dataSource: 'xiaohongshu' | 'douyin' | 'douyin_new',
     deepCrawl: boolean,
     maxVideos: number,
-    douyinNewConfig?: DouyinNewConfig
+    douyinNewConfig?: DouyinNewConfig,
+    aiProvider?: 'glm' | 'openai' | 'ollama' | 'lmstudio'
   ) => {
     try {
       setIsLoading(true);
@@ -189,6 +190,7 @@ export default function Home() {
           deepCrawl,
           maxVideos,
           douyinNewConfig,  // 新版抖音配置
+          aiProvider,
           locale  // 输出语言
         }),
       });

@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 
 type Result = { id: string; size: number; representative_texts: string[]; analysis: { one_line_pain: string; rationale: string; potential_product: string; paid_interest: string } };
-type Job = { jobId: string; status: string; progress: string; keywords?: string[]; crawlStats?: { videoCount?: number; commentCount?: number; textCount?: number }; sourceDateSummary?: { totalComments: number; datedComments: number; recent90: number; newestCommentAt?: string }; results?: Result[]; error?: string };
+type Job = { jobId: string; status: string; progress: string; keywords?: string[]; aiProvider?: string; crawlStats?: { videoCount?: number; commentCount?: number; textCount?: number }; sourceDateSummary?: { totalComments: number; datedComments: number; recent90: number; newestCommentAt?: string }; results?: Result[]; error?: string };
 
 export default function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
@@ -34,6 +34,7 @@ export default function JobDetailPage() {
       <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6">
         <p className="text-sm text-zinc-500">{job.keywords?.join('、')}</p>
         <p className="mt-3 font-medium">{job.progress}</p>
+        {job.aiProvider && <p className="mt-2 text-sm text-zinc-600">分析模型来源：{job.aiProvider}</p>}
         {job.crawlStats && <p className="mt-2 text-sm text-zinc-600">视频 {job.crawlStats.videoCount || 0} · 评论 {job.crawlStats.commentCount || 0} · 文本 {job.crawlStats.textCount || 0}</p>}
         {job.sourceDateSummary && <p className="mt-2 text-sm text-zinc-600">评论时间：近 90 天 {job.sourceDateSummary.recent90} / {job.sourceDateSummary.totalComments} 条 · 已知发布时间 {job.sourceDateSummary.datedComments} 条{job.sourceDateSummary.newestCommentAt ? ` · 最新 ${new Date(job.sourceDateSummary.newestCommentAt).toLocaleDateString()}` : ''}</p>}
         {job.sourceDateSummary && job.sourceDateSummary.recent90 === 0 && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">这份任务没有近 90 天的评论证据，分析结果只能作为历史线索；建议重新采集后再判断当前需求。</p>}

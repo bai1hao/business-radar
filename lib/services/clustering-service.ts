@@ -2,6 +2,8 @@
 import { spawn } from 'child_process';
 import * as path from 'path';
 import { logger } from './logger';
+import type { AIProviderName } from './ai-provider';
+import { getPythonCommand } from '../utils/python-detector';
 
 export interface SemanticCluster {
   representative_text: string;
@@ -69,11 +71,13 @@ export interface ClusterResult {
 export class ClusteringService {
   private pythonPath: string;
   private scriptPath: string;
+  private embeddingProvider?: AIProviderName;
 
-  constructor() {
+  constructor(providerOverride?: AIProviderName) {
     // 使用系统 Python 或虚拟环境
-    this.pythonPath = process.env.PYTHON_PATH || 'python';
+    this.pythonPath = getPythonCommand();
     this.scriptPath = path.join(process.cwd(), 'lib', 'semantic_clustering.py');
+    this.embeddingProvider = providerOverride;
   }
 
   /**
@@ -108,7 +112,15 @@ export class ClusteringService {
 
       const pythonProcess = spawn(this.pythonPath, args, {
         cwd: process.cwd(),
-        env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
+        env: {
+          ...process.env,
+          PYTHONIOENCODING: 'utf-8',
+          ...(this.embeddingProvider ? {
+            AI_PROVIDER: this.embeddingProvider,
+            EMBEDDING_PROVIDER: this.embeddingProvider,
+            EMBEDDING_MODEL: process.env[`${this.embeddingProvider === 'lmstudio' ? 'LM_STUDIO' : this.embeddingProvider.toUpperCase()}_EMBEDDING_MODEL`] || ''
+          } : {})
+        }
       });
 
       let stdout = '';
@@ -181,6 +193,9 @@ export class ClusteringService {
     });
 
     if (!result.success || result.clusters.length === 0) {
+      if (!result.success && this.embeddingProvider) {
+        throw new Error(`${this.embeddingProvider} Embedding 分析失败，请检查模型、密钥和服务连接`);
+      }
       // 降级到基础聚类
       logger.warn('语义聚类失败，使用基础聚类');
       return this.fallbackCluster(texts, minClusterSize);

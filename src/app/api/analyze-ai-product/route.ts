@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { aiProductJobManager } from '../../../../lib/services/ai-product-job-manager';
 import { DEFAULT_DATA_SOURCE, isDataSourceType } from '../../../../lib/services/data-source-interface';
 import { isWebOnlyMode, webOnlyResponse } from '../../../../lib/services/deployment-mode';
+import { getAIProviderName, isAIProviderName } from '../../../../lib/services/ai-provider';
+import { getAiReadiness } from '../../../../lib/services/ai-readiness';
 import {
   normalizeDouyinNewOptions,
   normalizeInteger,
@@ -47,9 +49,13 @@ export async function POST(request: NextRequest) {
       ? normalizeDouyinNewOptions(body.douyinNewConfig).maxVideos
       : limit;
     const locale = normalizeLocale(body.locale);
+    const aiProvider = body.aiProvider === undefined ? getAIProviderName() : body.aiProvider;
+    if (!isAIProviderName(aiProvider)) return NextResponse.json({ error: '不支持的模型来源' }, { status: 400 });
+    const readiness = await getAiReadiness(aiProvider);
+    if (!readiness.ready) return NextResponse.json({ error: readiness.message }, { status: 503 });
 
     // 创建AI产品分析任务
-    const jobId = aiProductJobManager.createJob(keywordResult.value, effectiveLimit, dataSource, locale);
+    const jobId = aiProductJobManager.createJob(keywordResult.value, effectiveLimit, dataSource, locale, aiProvider);
 
     // 立即返回任务ID，不等待任务完成
     return NextResponse.json(

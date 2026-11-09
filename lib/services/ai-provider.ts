@@ -2,6 +2,10 @@ import axios from 'axios';
 
 export type AIProviderName = 'glm' | 'openai' | 'ollama' | 'lmstudio';
 
+export function isAIProviderName(value: unknown): value is AIProviderName {
+  return value === 'glm' || value === 'openai' || value === 'ollama' || value === 'lmstudio';
+}
+
 export interface AIMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -71,8 +75,8 @@ function joinChatCompletionsUrl(baseUrl: string): string {
   return `${trimmedUrl}/chat/completions`;
 }
 
-function getProviderConfig(modelOverride?: string): ProviderConfig {
-  const provider = getAIProviderName();
+function getProviderConfig(modelOverride?: string, providerOverride?: AIProviderName): ProviderConfig {
+  const provider = providerOverride || getAIProviderName();
 
   if (provider === 'openai') {
     return {
@@ -110,6 +114,7 @@ function getProviderConfig(modelOverride?: string): ProviderConfig {
 }
 
 function getMissingCredentialMessage(config: ProviderConfig): string {
+  if (config.apiKey) return '';
   if (config.provider === 'glm') {
     return 'GLM_API_KEY 环境变量未设置';
   }
@@ -121,8 +126,8 @@ function getMissingCredentialMessage(config: ProviderConfig): string {
   return '';
 }
 
-export function createAIChatProvider(modelOverride?: string): AIChatProvider {
-  const config = getProviderConfig(modelOverride);
+export function createAIChatProvider(modelOverride?: string, providerOverride?: AIProviderName): AIChatProvider {
+  const config = getProviderConfig(modelOverride, providerOverride);
 
   return {
     provider: config.provider,

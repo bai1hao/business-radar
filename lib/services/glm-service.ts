@@ -1,5 +1,5 @@
 import { logger } from './logger';
-import { AIChatProvider, createAIChatProvider } from './ai-provider';
+import { AIChatProvider, AIProviderName, createAIChatProvider } from './ai-provider';
 
 // 深度分析结果接口
 export interface DeepAnalysisResult {
@@ -48,8 +48,8 @@ export class GLMService {
   private provider: AIChatProvider;
   private useThinking: boolean;
 
-  constructor() {
-    this.provider = createAIChatProvider();
+  constructor(providerOverride?: AIProviderName) {
+    this.provider = createAIChatProvider(undefined, providerOverride);
     this.useThinking =
       this.provider.provider === 'glm' &&
       (this.provider.model.includes('4.6') || process.env.GLM_USE_THINKING === 'true');
@@ -249,7 +249,7 @@ ${texts.join('\n\n')}
         throw new Error('AI 返回内容不是有效 JSON，请重试分析');
       }
     } catch (apiError) {
-      logger.error(`${this.provider.provider} API调用失败:`, apiError);
+      logger.error(`${this.provider.provider} API调用失败:`, apiError instanceof Error ? apiError.message : '未知错误');
       throw apiError;
     }
   }

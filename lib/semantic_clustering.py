@@ -328,8 +328,7 @@ class EmbeddingProvider:
                     result = json.loads(response.read().decode('utf-8'))
                     embeddings.append(self._extract_embedding(result))
             except urllib.error.HTTPError as e:
-                error_body = e.read().decode('utf-8')
-                logger.error(f"{self.provider} Embedding API 错误: {e.code} - {error_body}")
+                logger.error(f"{self.provider} Embedding API 错误: HTTP {e.code}")
                 raise
             except Exception as e:
                 logger.error(f"{self.provider} Embedding 请求失败: {e}")

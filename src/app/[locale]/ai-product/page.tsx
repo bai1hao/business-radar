@@ -79,7 +79,8 @@ export default function AIProductPage() {
     dataSource: DataSourceType,
     deepCrawl: boolean,
     maxVideos: number,
-    douyinNewConfig?: DouyinNewConfig
+    douyinNewConfig?: DouyinNewConfig,
+    aiProvider?: 'glm' | 'openai' | 'ollama' | 'lmstudio'
   ) => {
     try {
       setIsLoading(true);
@@ -98,6 +99,7 @@ export default function AIProductPage() {
           deepCrawl,
           maxVideos,
           douyinNewConfig,
+          aiProvider,
           locale  // 输出语言
         }),
       });

@@ -5,6 +5,7 @@ import { DEFAULT_DATA_SOURCE, DataSourceType } from './data-source-interface';
 import { AIProductService, AIProductResult } from './ai-product-service';
 import { JOB_RETENTION, pruneExpiredJobs, trimOldestJobs } from './job-retention';
 import { getJobTimeoutMs, JsonJobStore, jobQueue, logJobEvent, withTimeout } from './job-runtime';
+import { AIProviderName, getAIProviderName } from './ai-provider';
 
 export interface AIProductJob {
   jobId: string;
@@ -17,23 +18,22 @@ export interface AIProductJob {
   startTime: number;
   results?: AIProductResult[];
   error?: string;
+  aiProvider?: AIProviderName;
 }
 
 export class AIProductJobManager {
   private jobs: Map<string, AIProductJob>;
   private jobStore: JsonJobStore<AIProductJob>;
-  private aiProductService: AIProductService;
   private timedOutJobs: Set<string> = new Set();
 
   constructor() {
     this.jobStore = new JsonJobStore<AIProductJob>('ai-product');
     this.jobs = this.jobStore.loadAll();
     this.cleanupExpiredJobs();
-    this.aiProductService = new AIProductService();
   }
 
   // 创建新任务
-  public createJob(keywords: string[], limit: number = 50, dataSource: DataSourceType = DEFAULT_DATA_SOURCE, locale: string = 'zh'): string {
+  public createJob(keywords: string[], limit: number = 50, dataSource: DataSourceType = DEFAULT_DATA_SOURCE, locale: string = 'zh', aiProvider: AIProviderName = getAIProviderName()): string {
     this.cleanupExpiredJobs();
 
     const jobId = randomUUID();
@@ -45,6 +45,7 @@ export class AIProductJobManager {
       limit,
       dataSource,
       locale,
+      aiProvider,
       startTime: Date.now()
     };
 
@@ -155,7 +156,7 @@ export class AIProductJobManager {
       this.updateJobStatus(jobId, 'processing', '正在进行AI产品分析...');
 
       // 将所有文本合并分析，生成AI产品建议
-      const analysis = await this.aiProductService.analyzeForAIProduct(allRawTexts, job.locale);
+      const analysis = await new AIProductService(job.aiProvider || getAIProviderName()).analyzeForAIProduct(allRawTexts, job.locale);
 
       const result: AIProductResult = {
         id: 'ai-product-1',

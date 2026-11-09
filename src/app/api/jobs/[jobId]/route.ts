@@ -44,12 +44,14 @@ export async function GET(
       };
       clusteredData?: ClusteredDataGroup[];
       error?: string;
+      aiProvider?: string;
       sourceDateSummary?: { totalComments: number; datedComments: number; recent90: number; newestCommentAt?: string };
     } = {
       jobId: job.jobId,
       status: job.status,
       progress: job.progress,
-      keywords: job.keywords
+      keywords: job.keywords,
+      aiProvider: job.aiProvider
     };
     response.crawlStats = job.crawlStats;
     if (job.rawData?.comments.length) {

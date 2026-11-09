@@ -14,6 +14,12 @@
 
 ## LM Studio 按需分析
 
+分析任务现在可以逐次选择 LM Studio、Ollama、云端 GLM 或 OpenAI 兼容 API。聊天与 embedding 使用同一个所选来源；本地 LM Studio 也是 HTTP API 服务。云端模式要分别配置 API 密钥、聊天模型和 embedding 模型，密钥只保存在 `.env.local` 或服务器环境文件中。未配置密钥的来源不能启动分析。采集任务仍可在模型离线时运行并保存原始数据，之后选择任一已就绪来源分析。
+
+云端 GLM 使用 `GLM_API_KEY`、`GLM_BASE_URL`、`GLM_MODEL_NAME` 和 `GLM_EMBEDDING_MODEL`。其他提供 OpenAI 兼容聊天与 embedding 接口的服务使用 `OPENAI_API_KEY`、`OPENAI_BASE_URL`、`OPENAI_MODEL` 和 `OPENAI_EMBEDDING_MODEL`。每次启动分析前在页面选择来源；网页不会接收或返回 API 密钥。云端分析会向服务商发送待分析的评论原文，使用前应确认你接受该数据流向与费用。
+
+将来若服务器通过安全隧道访问家中 LM Studio，把服务器上的 `LM_STUDIO_BASE_URL` 改为隧道内地址，配置 `LM_STUDIO_API_KEY` 并启用 LM Studio 认证即可；现阶段不修改 FRP。服务器只运行网页时保持 `BUSINESS_RADAR_WEB_ONLY=true`；如已导入本地任务并安装分析依赖，可额外设置 `BUSINESS_RADAR_ALLOW_AI_ANALYSIS=true` 允许服务器分析已采集数据，采集仍只在本地电脑运行。
+
 在 LM Studio 中加载一个聊天模型和一个 embedding 模型，启动本地 API 服务。打开 `http://localhost:1234/v1/models` 查看服务实际返回的模型 ID。然后在项目根目录新建 `.env.local`（不要提交到 Git）：
 
 ```env
