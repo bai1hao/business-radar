@@ -11,6 +11,7 @@ export interface DouyinNewConfig {
   maxVideos: number;
   maxCommentsPerVideo: number;
   enableSubComments: boolean;
+  maxAgeDays: 30 | 90 | 180;
 }
 
 interface AnalysisFormProps {
@@ -36,7 +37,8 @@ export default function AnalysisForm({ onSubmit, isLoading }: AnalysisFormProps)
     enableComments: true,
     maxVideos: 15,
     maxCommentsPerVideo: 20,
-    enableSubComments: false
+    enableSubComments: false,
+    maxAgeDays: 90
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -172,6 +174,9 @@ export default function AnalysisForm({ onSubmit, isLoading }: AnalysisFormProps)
       {dataSource === 'douyin_new' && (
         <div className="p-4 bg-[#FBFBF9] rounded-xl space-y-4">
           <div className="text-sm font-bold text-[#18181B] mb-2">{t('douyinNewConfig.title')}</div>
+          <label className="block text-sm font-medium text-[#18181B]">发布时间范围
+            <select value={douyinNewConfig.maxAgeDays} onChange={e => setDouyinNewConfig(prev => ({ ...prev, maxAgeDays: Number(e.target.value) as 30 | 90 | 180 }))} disabled={isLoading} className="mt-2 w-full rounded-lg border border-gray-300 bg-white p-2"><option value={30}>最近 30 天</option><option value={90}>最近 90 天</option><option value={180}>最近 180 天</option></select>
+          </label>
 
           {/* 爬取评论开关 */}
           <label className="flex items-center justify-between group cursor-pointer">

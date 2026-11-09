@@ -15,6 +15,7 @@ export interface Evidence {
   status: EvidenceStatus;
   note: string;
   collectedAt: string;
+  commentCreatedAt?: string;
 }
 
 const root = process.env.BUSINESS_RADAR_DATA_DIR || path.join(process.cwd(), '.business-radar');
@@ -33,7 +34,7 @@ function write(rows: Evidence[]): void {
 }
 
 export function listEvidence(): Evidence[] {
-  return read().sort((a, b) => b.collectedAt.localeCompare(a.collectedAt));
+  return read().sort((a, b) => (b.commentCreatedAt || '').localeCompare(a.commentCreatedAt || '') || b.collectedAt.localeCompare(a.collectedAt));
 }
 
 export function addEvidence(input: Pick<Evidence, 'platform' | 'text' | 'sourceUrl'> & Partial<Evidence>): Evidence {
@@ -52,7 +53,8 @@ export function addEvidenceBatch(inputs: Array<Pick<Evidence, 'platform' | 'text
   const row: Evidence = {
     id: randomUUID(), platform: input.platform, text: input.text, sourceUrl: input.sourceUrl,
     commentUrl: input.commentUrl, commentId: input.commentId, contentId: input.contentId, authorLabel: input.authorLabel,
-    status: 'new', note: '', collectedAt: input.collectedAt || new Date().toISOString()
+    status: 'new', note: '', collectedAt: input.collectedAt || new Date().toISOString(),
+    commentCreatedAt: input.commentCreatedAt
   };
   rows.push(row);
     if (row.commentId) byComment.set(`${row.platform}:${row.commentId}`, row);

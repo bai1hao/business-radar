@@ -95,7 +95,8 @@ export function normalizeDouyinNewOptions(value: unknown): DouyinNewCrawlOptions
       config.maxCommentsPerVideo,
       REQUEST_LIMITS.douyinNewCommentsPerVideo
     ),
-    enableSubComments: normalizeBoolean(config.enableSubComments, false)
+    enableSubComments: normalizeBoolean(config.enableSubComments, false),
+    maxAgeDays: config.maxAgeDays === 30 || config.maxAgeDays === 90 || config.maxAgeDays === 180 ? config.maxAgeDays : 90
   };
 }
 

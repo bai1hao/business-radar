@@ -29,6 +29,7 @@ export interface RawCommentData {
   video_id?: string;
   video_url?: string;
   collected_at?: string;
+  comment_time?: string;
   video_title: string;
   comment_text: string;
   username: string;
@@ -301,6 +302,7 @@ export class JobManager {
                 video_id: comment.video_id,
                 video_url: comment.video_url,
                 collected_at: comment.collected_at,
+                comment_time: comment.comment_time,
                 video_title: comment.video_title || '',
                 comment_text: comment.comment_text || '',
                 username: comment.username || '',
@@ -362,7 +364,8 @@ export class JobManager {
             commentId: comment.comment_id,
             contentId: comment.video_id,
             authorLabel: comment.username,
-            collectedAt: comment.collected_at
+            collectedAt: comment.collected_at,
+            commentCreatedAt: comment.comment_time
           })));
         this.persistJob(job);
       }

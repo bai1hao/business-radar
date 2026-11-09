@@ -18,7 +18,11 @@
 # 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
 
 # 抖音平台配置
-PUBLISH_TIME_TYPE = 0
+import os
+
+# The search API supports a six-month video window; exact age is checked again
+# before fetching comments and when importing CSV records.
+PUBLISH_TIME_TYPE = 180 if os.getenv("BUSINESS_RADAR_MAX_AGE_DAYS") else 0
 
 # 指定DY视频URL列表 (支持多种格式)
 # 支持格式:

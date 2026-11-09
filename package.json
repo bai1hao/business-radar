@@ -12,6 +12,7 @@
     "security:audit": "npm audit --audit-level=moderate",
     "python:check": "python -m compileall lib",
     "backup:data": "node scripts/backup-data.mjs",
+    "backfill:comment-time": "node scripts/backfill-comment-time.mjs",
     "import:data": "node scripts/import-backup.mjs",
     "check": "npm run lint && npm run typecheck && npm run build && npm run python:check"
   },

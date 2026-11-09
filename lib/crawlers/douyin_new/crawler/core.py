@@ -20,6 +20,7 @@
 import asyncio
 import os
 import random
+import time
 from asyncio import Task
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -167,6 +168,13 @@ class DouYinCrawler(AbstractCrawler):
                         aweme_info: Dict = (post_item.get("aweme_info") or post_item.get("aweme_mix_info", {}).get("mix_items")[0])
                     except TypeError:
                         continue
+                    max_age_days = int(os.getenv("BUSINESS_RADAR_MAX_AGE_DAYS", "0"))
+                    if max_age_days:
+                        raw_published_at = str(aweme_info.get("create_time") or "")
+                        published_at = int(raw_published_at) if raw_published_at.isdigit() else 0
+                        age_seconds = time.time() - published_at
+                        if published_at <= 0 or age_seconds < -86400 or age_seconds > max_age_days * 86400:
+                            continue
                     aweme_list.append(aweme_info.get("aweme_id", ""))
                     page_aweme_list.append(aweme_info.get("aweme_id", ""))
                     await douyin_store.update_douyin_aweme(aweme_item=aweme_info)

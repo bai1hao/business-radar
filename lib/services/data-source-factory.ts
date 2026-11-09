@@ -55,7 +55,8 @@ class DouyinNewServiceAdapter implements IDataSourceService {
     enableComments: true,
     maxVideos: 15,
     maxCommentsPerVideo: 20,
-    enableSubComments: false
+    enableSubComments: false,
+    maxAgeDays: 90
   };
 
   constructor() {
@@ -97,7 +98,8 @@ class DouyinNewServiceAdapter implements IDataSourceService {
         options?.maxCommentsPerVideo,
         REQUEST_LIMITS.douyinNewCommentsPerVideo
       ),
-      enableSubComments: options?.enableSubComments ?? this.defaultOptions.enableSubComments
+      enableSubComments: options?.enableSubComments ?? this.defaultOptions.enableSubComments,
+      maxAgeDays: options?.maxAgeDays === 30 || options?.maxAgeDays === 90 || options?.maxAgeDays === 180 ? options.maxAgeDays : 90
     };
   }
 }

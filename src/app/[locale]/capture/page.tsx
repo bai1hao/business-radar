@@ -8,6 +8,7 @@ type Readiness = { ready: boolean; webOnly?: boolean; provider: string; message:
 
 export default function CapturePage() {
   const [keywords, setKeywords] = useState('');
+  const [maxAgeDays, setMaxAgeDays] = useState<30 | 90 | 180>(90);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState('');
   const [readiness, setReadiness] = useState<Readiness | null>(null);
@@ -15,7 +16,7 @@ export default function CapturePage() {
   const checkAi = async () => setReadiness(await (await fetch('/api/ai-readiness', { cache: 'no-store' })).json());
   useEffect(() => { void refresh(); void checkAi(); const timer = setInterval(() => { void refresh(); void checkAi(); }, 5000); return () => clearInterval(timer); }, []);
   async function capture() {
-    const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keywords: keywords.split(',').map(x => x.trim()).filter(Boolean), dataSource: 'douyin_new', deepCrawl: true, captureOnly: true, douyinNewConfig: { enableComments: true, maxVideos: 15, maxCommentsPerVideo: 20, enableSubComments: false } }) });
+    const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keywords: keywords.split(',').map(x => x.trim()).filter(Boolean), dataSource: 'douyin_new', deepCrawl: true, captureOnly: true, douyinNewConfig: { enableComments: true, maxVideos: 15, maxCommentsPerVideo: 20, enableSubComments: false, maxAgeDays } }) });
     if (!response.ok) { setError((await response.json()).error || '创建任务失败'); return; }
     setError(''); setKeywords(''); await refresh();
   }
@@ -30,8 +31,10 @@ export default function CapturePage() {
     <div className="mt-5 rounded-xl border border-zinc-200 bg-white p-4 text-sm"><strong>AI 状态：</strong>{readiness ? `${readiness.provider} · ${readiness.message}` : '正在检查…'}{readiness?.models && readiness.models.length > 0 && <p className="mt-2 text-zinc-600">服务可见模型：{readiness.models.join('、')}</p>}<p className="mt-2 text-zinc-500">LM Studio：启动本地 API 服务，加载聊天和 embedding 模型，再在 .env.local 中填写两个模型 ID。</p></div>
     {!readiness?.webOnly && <div className="mt-6 flex flex-wrap gap-3 rounded-2xl border border-zinc-200 bg-white p-5">
       <input aria-label="关键词" value={keywords} onChange={e => setKeywords(e.target.value)} placeholder="关键词，多个用逗号分隔" className="min-w-64 flex-1 rounded-lg border border-zinc-300 p-3" />
+      <select aria-label="采集时间范围" value={maxAgeDays} onChange={e => setMaxAgeDays(Number(e.target.value) as 30 | 90 | 180)} className="rounded-lg border border-zinc-300 bg-white p-3"><option value={30}>最近 30 天</option><option value={90}>最近 90 天</option><option value={180}>最近 180 天</option></select>
       <button disabled={!keywords.trim()} onClick={capture} className="rounded-lg bg-zinc-900 px-5 py-3 text-white disabled:opacity-40">只采集，稍后分析</button>
     </div>}
+    {!readiness?.webOnly && <p className="mt-2 text-xs text-zinc-500">按视频和评论的发布时间筛选；缺失发布时间的内容不会进入新任务。</p>}
     {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     <div className="mt-5"><Link href="/evidence" className="text-sm text-amber-700 underline">查看需求证据库</Link></div>
     <section className="mt-8 space-y-3"><h2 className="text-lg font-semibold">任务记录</h2>

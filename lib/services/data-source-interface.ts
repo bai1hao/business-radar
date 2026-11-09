@@ -25,6 +25,7 @@ export interface DataSourceComment {
   video_id?: string;
   video_url?: string;
   collected_at?: string;
+  comment_time?: string;
   video_title?: string;
   comment_text?: string;
   username?: string;
@@ -50,6 +51,7 @@ export interface DeepCrawlOptions {
   maxVideos?: number;
   maxCommentsPerVideo?: number;
   enableSubComments?: boolean;
+  maxAgeDays?: 30 | 90 | 180;
 }
 
 // 新版抖音爬虫配置选项
@@ -58,6 +60,7 @@ export interface DouyinNewCrawlOptions {
   maxVideos: number;              // 视频数量 (5-30)
   maxCommentsPerVideo: number;    // 每视频评论数 (10-50)
   enableSubComments: boolean;     // 是否爬取二级评论
+  maxAgeDays: 30 | 90 | 180;      // 最近多少天
 }
 
 export interface IDataSourceService {

@@ -82,6 +82,7 @@ export class DouyinNewService {
         env: {
           ...process.env,
           PYTHONIOENCODING: 'utf-8',
+          BUSINESS_RADAR_MAX_AGE_DAYS: String(options.maxAgeDays),
           // 关键：添加爬虫目录到 Python 模块搜索路径
           PYTHONPATH: this.crawlerPath + (process.env.PYTHONPATH ? (process.platform === 'win32' ? ';' : ':') + process.env.PYTHONPATH : '')
         },
@@ -301,12 +302,17 @@ export class DouyinNewService {
    * 映射评论数据为通用格式
    */
   private mapToRawCommentData(comment: DouyinNewComment, videoTitle: string, videoUrl: string): DataSourceComment {
+    const timestamp = Number(comment.create_time);
+    const commentTime = Number.isFinite(timestamp) && timestamp > 946684800 && timestamp < Date.now() / 1000 + 86400
+      ? new Date(timestamp * 1000).toISOString()
+      : undefined;
     return {
       platform: 'douyin',
       comment_id: comment.comment_id,
       video_id: comment.aweme_id,
       video_url: videoUrl,
       collected_at: new Date().toISOString(),
+      comment_time: commentTime,
       video_title: videoTitle,
       comment_text: comment.content,
       username: this.anonymizeUserLabel(comment.nickname),
@@ -326,6 +332,13 @@ export class DouyinNewService {
       .slice(0, 12);
 
     return `creator_${digest}`;
+  }
+
+  private isRecentTimestamp(raw: string, maxAgeDays: number): boolean {
+    const seconds = Number(raw);
+    if (!Number.isFinite(seconds) || seconds <= 946684800) return false;
+    const ageMs = Date.now() - seconds * 1000;
+    return ageMs >= -86400000 && ageMs <= maxAgeDays * 86400000;
   }
 
   /**
@@ -350,6 +363,7 @@ export class DouyinNewService {
           v.title.includes(keywords) ||
           v.desc.includes(keywords)
         )
+        .filter(v => this.isRecentTimestamp(v.create_time, options.maxAgeDays))
         .slice(0, options.maxVideos);
 
       // 提取文本
@@ -401,13 +415,14 @@ export class DouyinNewService {
       );
 
       // 限制视频数量
-      const limitedVideos = filteredVideos.slice(0, options.maxVideos);
+      const limitedVideos = filteredVideos.filter(v => this.isRecentTimestamp(v.create_time, options.maxAgeDays)).slice(0, options.maxVideos);
       const videoIds = new Set(limitedVideos.map(v => v.aweme_id));
 
       // 过滤评论
       const videoCommentCounts: Map<string, number> = new Map();
       const filteredComments = comments.filter(c => {
         if (!videoIds.has(c.aweme_id)) return false;
+        if (!this.isRecentTimestamp(c.create_time, options.maxAgeDays)) return false;
         const count = videoCommentCounts.get(c.aweme_id) || 0;
         if (count >= options.maxCommentsPerVideo) return false;
         videoCommentCounts.set(c.aweme_id, count + 1);
