@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { isPriorityEvidence, needSignals } from '@/lib/need-signals';
+import { isRecentDate } from '@/lib/evidence-freshness';
 
 type Row = { id: string; platform: string; text: string; sourceUrl: string; commentUrl?: string; commentId?: string; authorLabel?: string; status: 'new' | 'verified' | 'contacted' | 'dismissed'; note: string; collectedAt: string; commentCreatedAt?: string };
 
@@ -34,7 +35,7 @@ export default function EvidencePage() {
 
   const filtered = rows.filter(row =>
     (statusFilter === 'all' || row.status === statusFilter) &&
-    (ageFilter === 'all' || (ageFilter === 'unknown' ? !row.commentCreatedAt : Boolean(row.commentCreatedAt && Date.now() - Date.parse(row.commentCreatedAt) <= Number(ageFilter) * 86400000 && Date.now() - Date.parse(row.commentCreatedAt) >= -86400000))) &&
+    (ageFilter === 'all' || (ageFilter === 'unknown' ? !row.commentCreatedAt : isRecentDate(row.commentCreatedAt, Number(ageFilter)))) &&
     (signalFilter === 'all' ||
       (signalFilter === 'priority' && isPriorityEvidence(row.text)) ||
       (signalFilter === 'signals' && needSignals(row.text).length > 0) ||

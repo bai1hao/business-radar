@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { jobManager, RawVideoData, RawCommentData, ClusteredDataGroup } from '../../../../../lib/services/job-manager';
 import { ClusterResult } from '../../../../../lib/services/clustering-service';
 import { NO_STORE_HEADERS } from '../../../../../lib/services/http-headers';
+import { listEvidence } from '../../../../../lib/services/evidence-store';
+import { isRecentDate } from '@/lib/evidence-freshness';
 
 export async function GET(
   request: NextRequest,
@@ -42,6 +44,7 @@ export async function GET(
       };
       clusteredData?: ClusteredDataGroup[];
       error?: string;
+      sourceDateSummary?: { totalComments: number; datedComments: number; recent90: number; newestCommentAt?: string };
     } = {
       jobId: job.jobId,
       status: job.status,
@@ -49,6 +52,16 @@ export async function GET(
       keywords: job.keywords
     };
     response.crawlStats = job.crawlStats;
+    if (job.rawData?.comments.length) {
+      const evidenceDates = new Map(listEvidence().filter(row => row.commentId).map(row => [`${row.platform}:${row.commentId}`, row.commentCreatedAt]));
+      const dates = job.rawData.comments.map(comment => comment.comment_time || evidenceDates.get(`${comment.platform || 'douyin'}:${comment.comment_id}`)).filter((value): value is string => Boolean(value) && Number.isFinite(Date.parse(value!)));
+      response.sourceDateSummary = {
+        totalComments: job.rawData.comments.length,
+        datedComments: dates.length,
+        recent90: dates.filter(value => isRecentDate(value)).length,
+        newestCommentAt: dates.sort().at(-1)
+      };
+    }
 
     // 如果任务完成，包含结果
     if (job.status === "completed" && job.results) {
