@@ -4,19 +4,23 @@ import { useEffect, useState } from 'react';
 import { isPriorityEvidence, needSignals } from '@/lib/need-signals';
 import { isRecentDate } from '@/lib/evidence-freshness';
 
-type Row = { id: string; platform: string; text: string; sourceUrl: string; commentUrl?: string; commentId?: string; authorLabel?: string; sourceKeyword?: string; sourceKeywords?: string[]; status: 'new' | 'verified' | 'contacted' | 'dismissed'; note: string; collectedAt: string; commentCreatedAt?: string };
+type Row = { id: string; platform: string; text: string; sourceUrl: string; commentUrl?: string; commentId?: string; authorLabel?: string; sourceKeyword?: string; sourceKeywords?: string[]; status: 'new' | 'verified' | 'contacted' | 'dismissed'; note: string; collectedAt: string; commentCreatedAt?: string; updatedAt?: string; verifiedAt?: string; contactedAt?: string };
 
 export default function EvidencePage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [form, setForm] = useState({ platform: 'douyin', text: '', sourceUrl: '', commentUrl: '', commentId: '', commentCreatedAt: '' });
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('new');
   const [signalFilter, setSignalFilter] = useState('priority');
   const [ageFilter, setAgeFilter] = useState('90');
   const [keywordFilter, setKeywordFilter] = useState('all');
   const [page, setPage] = useState(1);
-  const refresh = async () => setRows(await (await fetch('/api/evidence', { cache: 'no-store' })).json());
+  const refresh = async () => {
+    const response = await fetch('/api/evidence', { cache: 'no-store' });
+    if (!response.ok) { setError('证据加载失败，请刷新页面重试'); return; }
+    setRows(await response.json());
+  };
   useEffect(() => { void refresh(); }, []);
 
   async function save() {
@@ -25,7 +29,9 @@ export default function EvidencePage() {
     setError(''); setForm({ ...form, text: '', sourceUrl: '', commentUrl: '', commentId: '', commentCreatedAt: '' }); await refresh();
   }
   async function update(row: Row, status: Row['status'], note: string) {
-    await fetch('/api/evidence', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: row.id, status, note }) });
+    const response = await fetch('/api/evidence', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: row.id, status, note }) });
+    if (!response.ok) { setError((await response.json()).error || '线索保存失败'); return; }
+    setError('');
     await refresh();
   }
   async function saveCommentUrl(row: Row, commentUrl: string) {
@@ -41,17 +47,18 @@ export default function EvidencePage() {
     (signalFilter === 'all' ||
       (signalFilter === 'priority' && isPriorityEvidence(row.text)) ||
       (signalFilter === 'signals' && needSignals(row.text).length > 0) ||
-      (signalFilter === 'missing-link' && isPriorityEvidence(row.text) && !row.commentUrl)) &&
+      (signalFilter === 'missing-link' && isPriorityEvidence(row.text) && !row.commentUrl) ||
+      (signalFilter === 'verified-missing-link' && row.status === 'verified' && !row.commentUrl)) &&
     (!query.trim() || `${row.text} ${row.note} ${row.platform} ${row.sourceKeywords?.join(' ') || row.sourceKeyword || ''}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
   );
   function exportFiltered() {
-    const headers = ['平台', '来源搜索词', '评论原文', '需求信号', '状态', '原帖链接', '评论分享链接', '评论ID', '备注', '评论发布时间', '采集时间'];
+    const headers = ['平台', '来源搜索词', '评论原文', '需求信号', '状态', '原帖链接', '评论分享链接', '评论ID', '备注', '评论发布时间', '采集时间', '核实时间', '联系时间', '最后修改时间'];
     const statusNames = { new: '待核实', verified: '已核实', contacted: '已联系', dismissed: '忽略' };
     const safeCell = (value: string) => {
       const protectedValue = /^[\s]*[=+\-@]/.test(value) ? `'${value}` : value;
       return `"${protectedValue.replace(/"/g, '""')}"`;
     };
-    const lines = [headers, ...filtered.map(row => [row.platform, row.sourceKeywords?.join('、') || row.sourceKeyword || '', row.text, needSignals(row.text).join('、'), statusNames[row.status], row.sourceUrl, row.commentUrl || '', row.commentId || '', row.note, row.commentCreatedAt || '', row.collectedAt])];
+    const lines = [headers, ...filtered.map(row => [row.platform, row.sourceKeywords?.join('、') || row.sourceKeyword || '', row.text, needSignals(row.text).join('、'), statusNames[row.status], row.sourceUrl, row.commentUrl || '', row.commentId || '', row.note, row.commentCreatedAt || '', row.collectedAt, row.verifiedAt || '', row.contactedAt || '', row.updatedAt || ''])];
     const csv = '\uFEFF' + lines.map(line => line.map(safeCell).join(',')).join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
@@ -80,17 +87,23 @@ export default function EvidencePage() {
       <button onClick={save} className="mt-4 rounded-lg bg-zinc-900 px-5 py-2.5 text-white">保存证据</button>
     </section>
     <section className="mt-8 space-y-4"><h2 className="text-lg font-semibold">已保存的线索 · {rows.length}</h2>
+      <div className="grid gap-3 sm:grid-cols-3">{([
+        { label: '待核实', count: rows.filter(row => row.status === 'new' && isRecentDate(row.commentCreatedAt) && isPriorityEvidence(row.text)).length, filter: 'new' },
+        { label: '已核实', count: rows.filter(row => row.status === 'verified').length, filter: 'verified' },
+        { label: '已联系', count: rows.filter(row => row.status === 'contacted').length, filter: 'contacted' }
+      ] as const).map(item => <button key={item.filter} type="button" onClick={() => { setStatusFilter(item.filter); setSignalFilter(item.filter === 'new' ? 'priority' : 'all'); setAgeFilter(item.filter === 'new' ? '90' : 'all'); setPage(1); }} className="rounded-xl border border-zinc-200 bg-white p-4 text-left hover:border-amber-400"><span className="block text-sm text-zinc-500">{item.label}{item.filter === 'new' ? ' · 近 90 天优先' : ''}</span><strong className="mt-1 block text-2xl">{item.count}</strong></button>)}</div>
       <div className="flex flex-wrap gap-3">
         <input aria-label="搜索线索" value={query} onChange={e => { setQuery(e.target.value); setPage(1); }} placeholder="搜索评论原文或备注" className="min-w-64 flex-1 rounded-lg border border-zinc-300 bg-white p-3" />
-        <select aria-label="筛选线索状态" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="all">全部状态</option><option value="new">待核实</option><option value="verified">已核实</option><option value="contacted">已联系</option><option value="dismissed">忽略</option></select>
-        <select aria-label="筛选需求信号" value={signalFilter} onChange={e => { setSignalFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="priority">优先核实</option><option value="missing-link">优先核实 · 待补评论链接</option><option value="signals">所有需求提示</option><option value="all">全部评论</option></select>
+        <select aria-label="筛选线索状态" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); if (signalFilter === 'verified-missing-link' && e.target.value !== 'verified') setSignalFilter('all'); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="all">全部状态</option><option value="new">待核实</option><option value="verified">已核实</option><option value="contacted">已联系</option><option value="dismissed">忽略</option></select>
+        <select aria-label="筛选需求信号" value={signalFilter} onChange={e => { setSignalFilter(e.target.value); if (e.target.value === 'verified-missing-link') { setStatusFilter('verified'); setAgeFilter('all'); } setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="priority">优先核实</option><option value="missing-link">优先核实 · 待补评论链接</option><option value="verified-missing-link">已核实 · 待补评论链接</option><option value="signals">所有需求提示</option><option value="all">全部评论</option></select>
         <select aria-label="筛选评论发布时间" value={ageFilter} onChange={e => { setAgeFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="30">近 30 天</option><option value="90">近 90 天</option><option value="180">近 180 天</option><option value="365">近 365 天</option><option value="all">全部时间</option><option value="unknown">发布时间未知</option></select>
         <select aria-label="筛选来源搜索词" value={keywordFilter} onChange={e => { setKeywordFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="all">全部搜索词</option>{[...new Set(rows.flatMap(row => row.sourceKeywords?.length ? row.sourceKeywords : row.sourceKeyword ? [row.sourceKeyword] : []))].sort().map(value => <option key={value} value={value}>{value}</option>)}<option value="unknown">来源搜索词未知</option></select>
       </div>
-      <p className="text-sm text-zinc-500">找到 {filtered.length} 条 · 第 {Math.min(page, pageCount)} / {pageCount} 页。筛选只是核实顺序，不能代替阅读原文。</p>
+      <p className="text-sm text-zinc-500">找到 {filtered.length} 条 · 第 {Math.min(page, pageCount)} / {pageCount} 页。先打开来源核对评论，再标记核实状态；原帖链接不一定能直达评论。</p>
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <button type="button" disabled={filtered.length === 0} onClick={exportFiltered} className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm disabled:opacity-40">导出当前筛选结果 CSV</button>
       {visible.map(row => <article key={row.id} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-zinc-500"><span>{row.platform}</span><span>搜索词：{row.sourceKeywords?.join('、') || row.sourceKeyword || '未知'}</span><span>评论：{row.commentCreatedAt ? new Date(row.commentCreatedAt).toLocaleString() : '发布时间未知'}</span><span>采集：{new Date(row.collectedAt).toLocaleString()}</span><span>{row.commentId ? `评论 ID：${row.commentId}` : '未记录评论 ID'}</span></div>
+        <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-zinc-500"><span>{row.platform}</span><span>搜索词：{row.sourceKeywords?.join('、') || row.sourceKeyword || '未知'}</span><span>评论：{row.commentCreatedAt ? new Date(row.commentCreatedAt).toLocaleString() : '发布时间未知'}</span><span>采集：{new Date(row.collectedAt).toLocaleString()}</span><span>{row.commentId ? `评论 ID：${row.commentId}` : '未记录评论 ID'}</span>{row.verifiedAt && <span>曾核实：{new Date(row.verifiedAt).toLocaleString()}</span>}{row.contactedAt && <span>曾联系：{new Date(row.contactedAt).toLocaleString()}</span>}</div>
         <p className="whitespace-pre-wrap leading-7">{row.text}</p>
         {needSignals(row.text).length > 0 && <div className="mt-3 flex flex-wrap gap-2">{needSignals(row.text).map(label => <span key={label} className="rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-800">{label}</span>)}</div>}
         <div className="mt-4 flex flex-wrap items-center gap-4"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 underline">打开原帖</a>{row.commentUrl ? <a href={row.commentUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 underline">打开已保存的评论链接</a> : <span className="text-xs text-zinc-500">尚无直达评论链接</span>}{row.commentId && <button type="button" onClick={() => void navigator.clipboard.writeText(row.commentId!).catch(() => setError('复制失败，请手动选中评论 ID'))} className="text-xs text-amber-700 underline">复制评论 ID</button>}<select aria-label="线索状态" value={row.status} onChange={e => void update(row, e.target.value as Row['status'], row.note)} className="rounded-lg border border-zinc-300 p-2 text-sm"><option value="new">待核实</option><option value="verified">已核实</option><option value="contacted">已联系</option><option value="dismissed">忽略</option></select></div>

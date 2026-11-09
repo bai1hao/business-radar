@@ -15,6 +15,9 @@ export interface Evidence {
   status: EvidenceStatus;
   note: string;
   collectedAt: string;
+  updatedAt?: string;
+  verifiedAt?: string;
+  contactedAt?: string;
   commentCreatedAt?: string;
   sourceKeyword?: string;
   sourceKeywords?: string[];
@@ -79,9 +82,13 @@ export function updateEvidence(id: string, status: EvidenceStatus, note: string,
   const rows = read();
   const row = rows.find(item => item.id === id);
   if (!row) return null;
+  const now = new Date().toISOString();
+  if (row.status !== status && status === 'verified' && !row.verifiedAt) row.verifiedAt = now;
+  if (row.status !== status && status === 'contacted' && !row.contactedAt) row.contactedAt = now;
   row.status = status;
   row.note = note;
   if (commentUrl !== undefined) row.commentUrl = commentUrl;
+  row.updatedAt = now;
   write(rows);
   return row;
 }
