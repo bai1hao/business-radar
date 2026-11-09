@@ -21,7 +21,15 @@ export default function EvidencePage() {
     if (!response.ok) { setError('证据加载失败，请刷新页面重试'); return; }
     setRows(await response.json());
   };
-  useEffect(() => { void refresh(); }, []);
+  useEffect(() => {
+    const keyword = new URLSearchParams(window.location.search).get('keyword');
+    if (keyword) {
+      setKeywordFilter(keyword);
+      setStatusFilter('all');
+      setSignalFilter('all');
+    }
+    void refresh();
+  }, []);
 
   async function save() {
     const response = await fetch('/api/evidence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });

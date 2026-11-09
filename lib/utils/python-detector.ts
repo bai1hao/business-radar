@@ -9,8 +9,15 @@ import path from 'node:path';
  */
 export function detectPythonCommand(): string {
   // 优先使用环境变量配置
-  if (process.env.PYTHON_PATH) {
-    return process.env.PYTHON_PATH;
+  const configuredPath = process.env.PYTHON_PATH?.trim();
+  if (configuredPath) {
+    if (path.isAbsolute(configuredPath)) return configuredPath;
+    if (configuredPath.includes('/') || configuredPath.includes('\\') || configuredPath.startsWith('.')) {
+      const absolutePath = path.resolve(process.cwd(), configuredPath);
+      if (!existsSync(absolutePath)) throw new Error(`PYTHON_PATH 指向的 Python 不存在：${absolutePath}`);
+      return absolutePath;
+    }
+    return configuredPath;
   }
 
   const projectPython = path.join(process.cwd(), '.venv',
