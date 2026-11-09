@@ -28,6 +28,7 @@ export class AIProductJobManager {
   constructor() {
     this.jobStore = new JsonJobStore<AIProductJob>('ai-product');
     this.jobs = this.jobStore.loadAll();
+    this.cleanupExpiredJobs();
     this.aiProductService = new AIProductService();
   }
 
@@ -84,7 +85,7 @@ export class AIProductJobManager {
   // 获取任务状态
   public getJob(jobId: string): AIProductJob | null {
     this.cleanupExpiredJobs();
-    return this.jobs.get(jobId) || null;
+    return this.jobs.get(jobId) || this.jobStore.load(jobId);
   }
 
   // 更新任务状态
@@ -174,23 +175,11 @@ export class AIProductJobManager {
 
   // 清理过期任务
   public cleanupExpiredJobs(maxAge: number = JOB_RETENTION.maxAgeMs): void {
-    const existingJobIds = new Set(this.jobs.keys());
     pruneExpiredJobs(this.jobs, maxAge);
-    for (const jobId of existingJobIds) {
-      if (!this.jobs.has(jobId)) {
-        this.jobStore.delete(jobId);
-      }
-    }
   }
 
   private trimJobs(): void {
-    const existingJobIds = new Set(this.jobs.keys());
     trimOldestJobs(this.jobs);
-    for (const jobId of existingJobIds) {
-      if (!this.jobs.has(jobId)) {
-        this.jobStore.delete(jobId);
-      }
-    }
   }
 
   private persistJob(job: AIProductJob): void {

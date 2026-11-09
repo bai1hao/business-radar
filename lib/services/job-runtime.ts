@@ -95,6 +95,21 @@ export class JsonJobStore<TJob extends RuntimeJob> {
     return jobs;
   }
 
+  load(jobId: string): TJob | null {
+    const filePath = this.getJobPath(jobId);
+    if (!fs.existsSync(filePath)) return null;
+    try {
+      const job = JSON.parse(fs.readFileSync(filePath, 'utf8')) as TJob;
+      return job.jobId === jobId && job.startTime && job.status ? job : null;
+    } catch (error) {
+      logJobEvent('warn', 'job_store_load_failed', {
+        filePath,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    }
+  }
+
   save(job: TJob): void {
     fs.mkdirSync(this.directory, { recursive: true });
     const filePath = this.getJobPath(job.jobId);

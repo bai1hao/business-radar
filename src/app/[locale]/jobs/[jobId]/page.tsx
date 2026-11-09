@@ -15,8 +15,12 @@ export default function JobDetailPage() {
     if (!jobId) return;
     const refresh = async () => {
       const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`, { cache: 'no-store' });
-      if (response.ok) setJob(await response.json());
-      else setError('任务不存在或已过期');
+      if (response.ok) {
+        setJob(await response.json());
+        setError('');
+      } else {
+        setError(response.status === 404 ? '任务不存在' : '加载任务失败，请稍后重试');
+      }
     };
     void refresh();
     const timer = setInterval(() => void refresh(), 5000);

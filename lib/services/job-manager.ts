@@ -100,6 +100,7 @@ export class JobManager {
   constructor() {
     this.jobStore = new JsonJobStore<Job>('analysis');
     this.jobs = this.jobStore.loadAll();
+    this.cleanupExpiredJobs();
     this.clusteringService = new ClusteringService();
     this.glmService = new GLMService();
     this.priorityScorer = new PriorityScorer();
@@ -173,7 +174,7 @@ export class JobManager {
   // 获取任务状态
   public getJob(jobId: string): Job | null {
     this.cleanupExpiredJobs();
-    return this.jobs.get(jobId) || null;
+    return this.jobs.get(jobId) || this.jobStore.load(jobId);
   }
 
   public listJobs(): Job[] {
@@ -575,23 +576,11 @@ export class JobManager {
 
   // 清理过期任务（可选）
   public cleanupExpiredJobs(maxAge: number = JOB_RETENTION.maxAgeMs): void {
-    const existingJobIds = new Set(this.jobs.keys());
     pruneExpiredJobs(this.jobs, maxAge);
-    for (const jobId of existingJobIds) {
-      if (!this.jobs.has(jobId)) {
-        this.jobStore.delete(jobId);
-      }
-    }
   }
 
   private trimJobs(): void {
-    const existingJobIds = new Set(this.jobs.keys());
     trimOldestJobs(this.jobs);
-    for (const jobId of existingJobIds) {
-      if (!this.jobs.has(jobId)) {
-        this.jobStore.delete(jobId);
-      }
-    }
   }
 
   private persistJob(job: Job): void {
