@@ -5,6 +5,10 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const statuses: EvidenceStatus[] = ['new', 'verified', 'contacted', 'dismissed'];
 
+function validWebUrl(value: string): boolean {
+  try { return ['http:', 'https:'].includes(new URL(value).protocol); } catch { return false; }
+}
+
 export async function GET() {
   return NextResponse.json(listEvidence(), { headers: { 'Cache-Control': 'no-store' } });
 }
@@ -14,11 +18,11 @@ export async function POST(request: NextRequest) {
   if (!body || typeof body.text !== 'string' || !body.text.trim() || typeof body.platform !== 'string' || !body.platform.trim() || typeof body.sourceUrl !== 'string') {
     return NextResponse.json({ error: '请填写平台、原文和原帖地址' }, { status: 400 });
   }
-  try {
-    const url = new URL(body.sourceUrl);
-    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('bad URL');
-  } catch { return NextResponse.json({ error: '原帖地址必须是有效的网页链接' }, { status: 400 }); }
-  return NextResponse.json(addEvidence({ platform: body.platform.trim(), text: body.text.trim(), sourceUrl: body.sourceUrl, commentId: body.commentId, contentId: body.contentId, authorLabel: body.authorLabel }), { status: 201 });
+  if (!validWebUrl(body.sourceUrl)) return NextResponse.json({ error: '原帖地址必须是有效的网页链接' }, { status: 400 });
+  if (body.commentUrl !== undefined && (typeof body.commentUrl !== 'string' || (body.commentUrl && !validWebUrl(body.commentUrl)))) {
+    return NextResponse.json({ error: '评论链接必须是有效的网页地址' }, { status: 400 });
+  }
+  return NextResponse.json(addEvidence({ platform: body.platform.trim(), text: body.text.trim(), sourceUrl: body.sourceUrl, commentUrl: body.commentUrl || undefined, commentId: body.commentId, contentId: body.contentId, authorLabel: body.authorLabel }), { status: 201 });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -29,10 +33,7 @@ export async function PATCH(request: NextRequest) {
   if (body.commentUrl !== undefined) {
     if (typeof body.commentUrl !== 'string') return NextResponse.json({ error: '评论链接格式无效' }, { status: 400 });
     if (body.commentUrl) {
-      try {
-        const url = new URL(body.commentUrl);
-        if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Invalid protocol');
-      } catch { return NextResponse.json({ error: '评论链接必须是有效的网页地址' }, { status: 400 }); }
+      if (!validWebUrl(body.commentUrl)) return NextResponse.json({ error: '评论链接必须是有效的网页地址' }, { status: 400 });
     }
   }
   const row = updateEvidence(body.id, body.status, body.note, body.commentUrl);

@@ -1,17 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { needSignals } from '@/lib/need-signals';
+import { isPriorityEvidence, needSignals } from '@/lib/need-signals';
 
 type Row = { id: string; platform: string; text: string; sourceUrl: string; commentUrl?: string; commentId?: string; authorLabel?: string; status: 'new' | 'verified' | 'contacted' | 'dismissed'; note: string; collectedAt: string };
 
 export default function EvidencePage() {
   const [rows, setRows] = useState<Row[]>([]);
-  const [form, setForm] = useState({ platform: 'douyin', text: '', sourceUrl: '', commentId: '' });
+  const [form, setForm] = useState({ platform: 'douyin', text: '', sourceUrl: '', commentUrl: '', commentId: '' });
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [signalFilter, setSignalFilter] = useState('all');
+  const [signalFilter, setSignalFilter] = useState('priority');
   const [page, setPage] = useState(1);
   const refresh = async () => setRows(await (await fetch('/api/evidence', { cache: 'no-store' })).json());
   useEffect(() => { void refresh(); }, []);
@@ -19,7 +19,7 @@ export default function EvidencePage() {
   async function save() {
     const response = await fetch('/api/evidence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
     if (!response.ok) { setError((await response.json()).error); return; }
-    setError(''); setForm({ ...form, text: '', sourceUrl: '', commentId: '' }); await refresh();
+    setError(''); setForm({ ...form, text: '', sourceUrl: '', commentUrl: '', commentId: '' }); await refresh();
   }
   async function update(row: Row, status: Row['status'], note: string) {
     await fetch('/api/evidence', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: row.id, status, note }) });
@@ -33,7 +33,10 @@ export default function EvidencePage() {
 
   const filtered = rows.filter(row =>
     (statusFilter === 'all' || row.status === statusFilter) &&
-    (signalFilter === 'all' || needSignals(row.text).length > 0) &&
+    (signalFilter === 'all' ||
+      (signalFilter === 'priority' && isPriorityEvidence(row.text)) ||
+      (signalFilter === 'signals' && needSignals(row.text).length > 0) ||
+      (signalFilter === 'missing-link' && isPriorityEvidence(row.text) && !row.commentUrl)) &&
     (!query.trim() || `${row.text} ${row.note} ${row.platform}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
   );
   function exportFiltered() {
@@ -62,7 +65,8 @@ export default function EvidencePage() {
       <h2 className="mb-4 text-lg font-semibold">添加线索</h2>
       <div className="grid gap-3 md:grid-cols-2">
         <input aria-label="平台" className="rounded-lg border border-zinc-300 p-3" placeholder="平台" value={form.platform} onChange={e => setForm({ ...form, platform: e.target.value })} />
-        <input aria-label="原帖链接" className="rounded-lg border border-zinc-300 p-3" placeholder="原帖或评论分享链接" value={form.sourceUrl} onChange={e => setForm({ ...form, sourceUrl: e.target.value })} />
+        <input aria-label="原帖链接" className="rounded-lg border border-zinc-300 p-3" placeholder="原帖链接（必填）" value={form.sourceUrl} onChange={e => setForm({ ...form, sourceUrl: e.target.value })} />
+        <input aria-label="评论分享链接" className="rounded-lg border border-zinc-300 p-3" placeholder="评论分享链接（可选，确认可打开后填写）" value={form.commentUrl} onChange={e => setForm({ ...form, commentUrl: e.target.value })} />
         <input aria-label="评论 ID" className="rounded-lg border border-zinc-300 p-3" placeholder="评论 ID（可选）" value={form.commentId} onChange={e => setForm({ ...form, commentId: e.target.value })} />
         <textarea aria-label="需求原文" className="rounded-lg border border-zinc-300 p-3 md:col-span-2" placeholder="复制原帖或评论原文" value={form.text} onChange={e => setForm({ ...form, text: e.target.value })} />
       </div>
@@ -73,15 +77,15 @@ export default function EvidencePage() {
       <div className="flex flex-wrap gap-3">
         <input aria-label="搜索线索" value={query} onChange={e => { setQuery(e.target.value); setPage(1); }} placeholder="搜索评论原文或备注" className="min-w-64 flex-1 rounded-lg border border-zinc-300 bg-white p-3" />
         <select aria-label="筛选线索状态" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="all">全部状态</option><option value="new">待核实</option><option value="verified">已核实</option><option value="contacted">已联系</option><option value="dismissed">忽略</option></select>
-        <select aria-label="筛选需求信号" value={signalFilter} onChange={e => { setSignalFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="all">全部评论</option><option value="signals">仅看需求信号</option></select>
+        <select aria-label="筛选需求信号" value={signalFilter} onChange={e => { setSignalFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="priority">优先核实</option><option value="missing-link">优先核实 · 待补评论链接</option><option value="signals">所有需求提示</option><option value="all">全部评论</option></select>
       </div>
-      <p className="text-sm text-zinc-500">找到 {filtered.length} 条 · 第 {Math.min(page, pageCount)} / {pageCount} 页</p>
+      <p className="text-sm text-zinc-500">找到 {filtered.length} 条 · 第 {Math.min(page, pageCount)} / {pageCount} 页。筛选只是核实顺序，不能代替阅读原文。</p>
       <button type="button" disabled={filtered.length === 0} onClick={exportFiltered} className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm disabled:opacity-40">导出当前筛选结果 CSV</button>
       {visible.map(row => <article key={row.id} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-zinc-500"><span>{row.platform}</span><span>{new Date(row.collectedAt).toLocaleString()}</span><span>{row.commentId ? `评论 ID：${row.commentId}` : '未记录评论 ID'}</span></div>
         <p className="whitespace-pre-wrap leading-7">{row.text}</p>
         {needSignals(row.text).length > 0 && <div className="mt-3 flex flex-wrap gap-2">{needSignals(row.text).map(label => <span key={label} className="rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-800">{label}</span>)}</div>}
-        <div className="mt-4 flex flex-wrap items-center gap-4"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 underline">打开原帖</a>{row.commentUrl && <a href={row.commentUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 underline">打开已保存的评论分享链接</a>}<select aria-label="线索状态" value={row.status} onChange={e => void update(row, e.target.value as Row['status'], row.note)} className="rounded-lg border border-zinc-300 p-2 text-sm"><option value="new">待核实</option><option value="verified">已核实</option><option value="contacted">已联系</option><option value="dismissed">忽略</option></select></div>
+        <div className="mt-4 flex flex-wrap items-center gap-4"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 underline">打开原帖</a>{row.commentUrl ? <a href={row.commentUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 underline">打开已保存的评论链接</a> : <span className="text-xs text-zinc-500">尚无直达评论链接</span>}{row.commentId && <button type="button" onClick={() => void navigator.clipboard.writeText(row.commentId!).catch(() => setError('复制失败，请手动选中评论 ID'))} className="text-xs text-amber-700 underline">复制评论 ID</button>}<select aria-label="线索状态" value={row.status} onChange={e => void update(row, e.target.value as Row['status'], row.note)} className="rounded-lg border border-zinc-300 p-2 text-sm"><option value="new">待核实</option><option value="verified">已核实</option><option value="contacted">已联系</option><option value="dismissed">忽略</option></select></div>
         <input aria-label="评论分享链接" key={`${row.id}:${row.commentUrl || ''}`} defaultValue={row.commentUrl || ''} onBlur={e => { if (e.target.value !== (row.commentUrl || '')) void saveCommentUrl(row, e.target.value.trim()); }} placeholder="可选：粘贴在抖音核实过的评论分享链接，离开输入框时保存" className="mt-4 w-full rounded-lg border border-zinc-300 p-3 text-sm" />
         <textarea aria-label="线索备注" defaultValue={row.note} onBlur={e => { if (e.target.value !== row.note) void update(row, row.status, e.target.value); }} placeholder="备注：需求背景、联系进展…" className="mt-4 w-full rounded-lg border border-zinc-300 p-3 text-sm" />
       </article>)}

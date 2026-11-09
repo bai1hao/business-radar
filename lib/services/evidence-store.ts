@@ -51,7 +51,7 @@ export function addEvidenceBatch(inputs: Array<Pick<Evidence, 'platform' | 'text
     if (existing) { result.push(existing); continue; }
   const row: Evidence = {
     id: randomUUID(), platform: input.platform, text: input.text, sourceUrl: input.sourceUrl,
-    commentId: input.commentId, contentId: input.contentId, authorLabel: input.authorLabel,
+    commentUrl: input.commentUrl, commentId: input.commentId, contentId: input.contentId, authorLabel: input.authorLabel,
     status: 'new', note: '', collectedAt: input.collectedAt || new Date().toISOString()
   };
   rows.push(row);
