@@ -2,7 +2,7 @@
 // 调用本地爬虫模块并读取 CSV 结果
 
 import { spawn } from 'child_process';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import path from 'path';
 import fs from 'fs/promises';
 import { getPythonCommand } from '../utils/python-detector';
@@ -55,7 +55,9 @@ export class DouyinNewService {
     keywords: string,
     options: DouyinNewCrawlOptions,
     timeout: number = 600000
-  ): Promise<void> {
+  ): Promise<{ runId: string; runDate: string }> {
+    const runId = randomUUID();
+    const runDate = this.formatLocalDate(new Date());
     return new Promise((resolve, reject) => {
       const mainScript = path.join(this.crawlerPath, 'main.py');
       const headless = this.isHeadlessEnabled();
@@ -83,6 +85,10 @@ export class DouyinNewService {
           ...process.env,
           PYTHONIOENCODING: 'utf-8',
           BUSINESS_RADAR_MAX_AGE_DAYS: String(options.maxAgeDays),
+          BUSINESS_RADAR_CRAWL_RUN_ID: runId,
+          BUSINESS_RADAR_CRAWL_DATE: runDate,
+          BUSINESS_RADAR_MAX_VIDEOS: String(options.maxVideos),
+          BUSINESS_RADAR_MAX_COMMENTS_PER_VIDEO: String(options.maxCommentsPerVideo),
           // 关键：添加爬虫目录到 Python 模块搜索路径
           PYTHONPATH: this.crawlerPath + (process.env.PYTHONPATH ? (process.platform === 'win32' ? ';' : ':') + process.env.PYTHONPATH : '')
         },
@@ -111,7 +117,7 @@ export class DouyinNewService {
       crawlerProcess.on('close', (code) => {
         clearTimeout(timeoutId);
         if (code === 0) {
-          resolve();
+          resolve({ runId, runDate });
         } else {
           reject(new Error(`爬虫执行失败 (退出代码: ${code})\n${stderr}`));
         }
@@ -127,11 +133,10 @@ export class DouyinNewService {
   /**
    * 获取今日 CSV 文件路径
    */
-  private getTodayCSVPaths(): { contents: string; comments: string } {
-    const today = this.formatLocalDate(new Date()); // YYYY-MM-DD
+  private getTodayCSVPaths(runId: string, runDate: string): { contents: string; comments: string } {
     return {
-      contents: path.join(this.csvOutputPath, `search_contents_${today}.csv`),
-      comments: path.join(this.csvOutputPath, `search_comments_${today}.csv`)
+      contents: path.join(this.csvOutputPath, `search_contents_${runDate}_${runId}.csv`),
+      comments: path.join(this.csvOutputPath, `search_comments_${runDate}_${runId}.csv`)
     };
   }
 
@@ -301,7 +306,7 @@ export class DouyinNewService {
   /**
    * 映射评论数据为通用格式
    */
-  private mapToRawCommentData(comment: DouyinNewComment, videoTitle: string, videoUrl: string): DataSourceComment {
+  private mapToRawCommentData(comment: DouyinNewComment, videoTitle: string, videoUrl: string, sourceKeyword: string): DataSourceComment {
     const timestamp = Number(comment.create_time);
     const commentTime = Number.isFinite(timestamp) && timestamp > 946684800 && timestamp < Date.now() / 1000 + 86400
       ? new Date(timestamp * 1000).toISOString()
@@ -313,6 +318,7 @@ export class DouyinNewService {
       video_url: videoUrl,
       collected_at: new Date().toISOString(),
       comment_time: commentTime,
+      source_keyword: sourceKeyword,
       video_title: videoTitle,
       comment_text: comment.content,
       username: this.anonymizeUserLabel(comment.nickname),
@@ -350,19 +356,15 @@ export class DouyinNewService {
   ): Promise<{ videos: DataSourceVideo[]; rawTexts: string[] }> {
     try {
       // 执行爬虫
-      await this.executeCrawler(keywords, { ...options, enableComments: false });
+      const { runId, runDate } = await this.executeCrawler(keywords, { ...options, enableComments: false });
 
       // 读取 CSV
-      const csvPaths = this.getTodayCSVPaths();
+      const csvPaths = this.getTodayCSVPaths(runId, runDate);
       const videos = await this.parseContentsCSV(csvPaths.contents);
 
       // 按关键词过滤并限制数量
       const filteredVideos = videos
-        .filter(v =>
-          v.source_keyword === keywords ||
-          v.title.includes(keywords) ||
-          v.desc.includes(keywords)
-        )
+        .filter(v => v.source_keyword === keywords)
         .filter(v => this.isRecentTimestamp(v.create_time, options.maxAgeDays))
         .slice(0, options.maxVideos);
 
@@ -397,22 +399,17 @@ export class DouyinNewService {
   ): Promise<DeepCrawlResult> {
     try {
       // 执行爬虫（抓取评论）
-      await this.executeCrawler(keywords, options);
+      const { runId, runDate } = await this.executeCrawler(keywords, options);
 
       // 读取 CSV
-      const csvPaths = this.getTodayCSVPaths();
+      const csvPaths = this.getTodayCSVPaths(runId, runDate);
       const videos = await this.parseContentsCSV(csvPaths.contents);
       const comments = options.enableComments
         ? await this.parseCommentsCSV(csvPaths.comments)
         : [];
 
       // 按关键词过滤
-      const filteredVideos = videos.filter(
-        v =>
-          v.source_keyword === keywords ||
-          v.title.includes(keywords) ||
-          v.desc.includes(keywords)
-      );
+      const filteredVideos = videos.filter(v => v.source_keyword === keywords);
 
       // 限制视频数量
       const limitedVideos = filteredVideos.filter(v => this.isRecentTimestamp(v.create_time, options.maxAgeDays)).slice(0, options.maxVideos);
@@ -444,7 +441,7 @@ export class DouyinNewService {
 
       const mappedComments = filteredComments.map(c => {
         const videoTitle = videoTitleMap.get(c.aweme_id) || '';
-        const mapped = this.mapToRawCommentData(c, videoTitle, videoUrlMap.get(c.aweme_id) || '');
+        const mapped = this.mapToRawCommentData(c, videoTitle, videoUrlMap.get(c.aweme_id) || '', keywords);
         if (c.content && c.content.length > 5) rawTexts.push(c.content);
         return mapped;
       });

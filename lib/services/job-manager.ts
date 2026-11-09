@@ -30,6 +30,7 @@ export interface RawCommentData {
   video_url?: string;
   collected_at?: string;
   comment_time?: string;
+  source_keyword?: string;
   video_title: string;
   comment_text: string;
   username: string;
@@ -303,6 +304,7 @@ export class JobManager {
                 video_url: comment.video_url,
                 collected_at: comment.collected_at,
                 comment_time: comment.comment_time,
+                source_keyword: comment.source_keyword,
                 video_title: comment.video_title || '',
                 comment_text: comment.comment_text || '',
                 username: comment.username || '',
@@ -365,7 +367,8 @@ export class JobManager {
             contentId: comment.video_id,
             authorLabel: comment.username,
             collectedAt: comment.collected_at,
-            commentCreatedAt: comment.comment_time
+            commentCreatedAt: comment.comment_time,
+            sourceKeyword: comment.source_keyword
           })));
         this.persistJob(job);
       }

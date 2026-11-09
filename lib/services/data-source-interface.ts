@@ -26,6 +26,7 @@ export interface DataSourceComment {
   video_url?: string;
   collected_at?: string;
   comment_time?: string;
+  source_keyword?: string;
   video_title?: string;
   comment_text?: string;
   username?: string;

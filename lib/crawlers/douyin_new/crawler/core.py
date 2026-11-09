@@ -128,8 +128,9 @@ class DouYinCrawler(AbstractCrawler):
     async def search(self) -> None:
         utils.logger.info("[DouYinCrawler.search] Begin search douyin keywords")
         dy_limit_count = 10  # douyin limit page fixed value
-        if config.CRAWLER_MAX_NOTES_COUNT < dy_limit_count:
-            config.CRAWLER_MAX_NOTES_COUNT = dy_limit_count
+        target_count = int(os.getenv("BUSINESS_RADAR_MAX_VIDEOS", str(config.CRAWLER_MAX_NOTES_COUNT)))
+        target_count = max(1, target_count)
+        max_pages = max(1, (target_count + dy_limit_count - 1) // dy_limit_count)
         start_page = config.START_PAGE  # start page number
         for keyword in config.KEYWORDS.split(","):
             source_keyword_var.set(keyword)
@@ -137,7 +138,7 @@ class DouYinCrawler(AbstractCrawler):
             aweme_list: List[str] = []
             page = 0
             dy_search_id = ""
-            while (page - start_page + 1) * dy_limit_count <= config.CRAWLER_MAX_NOTES_COUNT:
+            while page - start_page < max_pages:
                 if page < start_page:
                     utils.logger.info(f"[DouYinCrawler.search] Skip {page}")
                     page += 1
@@ -175,6 +176,8 @@ class DouYinCrawler(AbstractCrawler):
                         age_seconds = time.time() - published_at
                         if published_at <= 0 or age_seconds < -86400 or age_seconds > max_age_days * 86400:
                             continue
+                    if len(aweme_list) >= target_count:
+                        break
                     aweme_list.append(aweme_info.get("aweme_id", ""))
                     page_aweme_list.append(aweme_info.get("aweme_id", ""))
                     await douyin_store.update_douyin_aweme(aweme_item=aweme_info)
@@ -266,7 +269,7 @@ class DouYinCrawler(AbstractCrawler):
                     crawl_interval=crawl_interval,
                     is_fetch_sub_comments=config.ENABLE_GET_SUB_COMMENTS,
                     callback=douyin_store.batch_update_dy_aweme_comments,
-                    max_count=config.CRAWLER_MAX_COMMENTS_COUNT_SINGLENOTES,
+                    max_count=int(os.getenv("BUSINESS_RADAR_MAX_COMMENTS_PER_VIDEO", str(config.CRAWLER_MAX_COMMENTS_COUNT_SINGLENOTES))),
                 )
                 # Sleep after fetching comments
                 await asyncio.sleep(crawl_interval)

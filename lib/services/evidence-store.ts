@@ -16,6 +16,8 @@ export interface Evidence {
   note: string;
   collectedAt: string;
   commentCreatedAt?: string;
+  sourceKeyword?: string;
+  sourceKeywords?: string[];
 }
 
 const root = process.env.BUSINESS_RADAR_DATA_DIR || path.join(process.cwd(), '.business-radar');
@@ -49,12 +51,20 @@ export function addEvidenceBatch(inputs: Array<Pick<Evidence, 'platform' | 'text
   let changed = false;
   for (const input of inputs) {
     const existing = input.commentId ? byComment.get(`${input.platform}:${input.commentId}`) : undefined;
-    if (existing) { result.push(existing); continue; }
+    if (existing) {
+      if (input.sourceKeyword && ![...(existing.sourceKeywords || []), existing.sourceKeyword].includes(input.sourceKeyword)) {
+        existing.sourceKeywords = [...new Set([...(existing.sourceKeywords || []), existing.sourceKeyword, input.sourceKeyword].filter((value): value is string => Boolean(value)))];
+        changed = true;
+      }
+      result.push(existing);
+      continue;
+    }
   const row: Evidence = {
     id: randomUUID(), platform: input.platform, text: input.text, sourceUrl: input.sourceUrl,
     commentUrl: input.commentUrl, commentId: input.commentId, contentId: input.contentId, authorLabel: input.authorLabel,
     status: 'new', note: '', collectedAt: input.collectedAt || new Date().toISOString(),
-    commentCreatedAt: input.commentCreatedAt
+    commentCreatedAt: input.commentCreatedAt, sourceKeyword: input.sourceKeyword,
+    sourceKeywords: input.sourceKeyword ? [input.sourceKeyword] : undefined
   };
   rows.push(row);
     if (row.commentId) byComment.set(`${row.platform}:${row.commentId}`, row);
