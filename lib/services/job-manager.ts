@@ -181,7 +181,9 @@ export class JobManager {
 
   public listJobs(): Job[] {
     this.cleanupExpiredJobs();
-    return [...this.jobs.values()].sort((a, b) => b.startTime - a.startTime);
+    const jobs = new Map(this.jobStore.listSaved(JOB_RETENTION.maxJobs).map(job => [job.jobId, job]));
+    for (const job of this.jobs.values()) jobs.set(job.jobId, job);
+    return [...jobs.values()].sort((a, b) => b.startTime - a.startTime).slice(0, JOB_RETENTION.maxJobs);
   }
 
   public analyzeCapturedJob(jobId: string, aiProvider: AIProviderName = getAIProviderName()): boolean {

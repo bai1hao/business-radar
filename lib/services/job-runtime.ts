@@ -110,6 +110,31 @@ export class JsonJobStore<TJob extends RuntimeJob> {
     }
   }
 
+  listSaved(limit = 100): TJob[] {
+    if (!fs.existsSync(this.directory)) return [];
+    const files = fs.readdirSync(this.directory, { withFileTypes: true })
+      .filter(entry => entry.isFile() && entry.name.endsWith('.json'))
+      .map(entry => {
+        const filePath = path.join(this.directory, entry.name);
+        return { filePath, modified: fs.statSync(filePath).mtimeMs };
+      })
+      .sort((a, b) => b.modified - a.modified)
+      .slice(0, limit);
+    const jobs: TJob[] = [];
+    for (const { filePath } of files) {
+      try {
+        const job = JSON.parse(fs.readFileSync(filePath, 'utf8')) as TJob;
+        if (job.jobId && job.startTime && job.status) jobs.push(job);
+      } catch (error) {
+        logJobEvent('warn', 'job_store_load_failed', {
+          filePath,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+    return jobs;
+  }
+
   save(job: TJob): void {
     fs.mkdirSync(this.directory, { recursive: true });
     const filePath = this.getJobPath(job.jobId);
