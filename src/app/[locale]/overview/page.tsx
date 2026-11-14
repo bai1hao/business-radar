@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { isPriorityEvidence, needSignals } from '@/lib/need-signals';
+import { isActionableEvidence, needSignals } from '@/lib/need-signals';
 import { isRecentDate } from '@/lib/evidence-freshness';
 
-type Evidence = { id: string; text: string; status: 'new' | 'verified' | 'contacted' | 'dismissed'; sourceUrl: string; commentUrl?: string; commentCreatedAt?: string; collectedAt: string };
+type Evidence = { id: string; text: string; status: 'new' | 'verified' | 'contacted' | 'dismissed'; reviewVerdict?: 'need' | 'not-need' | 'unclear'; sourceUrl: string; commentUrl?: string; commentCreatedAt?: string; collectedAt: string };
 type Job = { jobId: string; status: string; progress: string; keywords: string[]; startTime: number };
 
 export default function OverviewPage() {
@@ -20,11 +20,11 @@ export default function OverviewPage() {
       }).catch(e => setError(e instanceof Error ? e.message : '加载失败'));
   }, []);
   const recent = evidence.filter(row => isRecentDate(row.commentCreatedAt));
-  const signals = recent.filter(row => isPriorityEvidence(row.text));
+  const signals = recent.filter(row => (row.status === 'new' || row.status === 'verified') && isActionableEvidence(row.text, row.reviewVerdict));
   const cards = [
     { label: '全部证据', value: evidence.length, detail: '已保存的原始评论', href: '/evidence' },
     { label: '近 90 天证据', value: recent.length, detail: '按评论发布时间计算', href: '/evidence' },
-    { label: '近期优先线索', value: signals.length, detail: '规则初筛，仍需人工核实', href: '/evidence' },
+    { label: '近期优先线索', value: signals.length, detail: '规则提示与人工判读，仍需核实', href: '/evidence' },
     { label: '已联系', value: evidence.filter(row => row.status === 'contacted').length, detail: '已记录联系进展', href: '/evidence' }
   ];
   return <main className="mx-auto max-w-6xl px-5 py-10">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { isPriorityEvidence, needSignals } from '@/lib/need-signals';
+import { isActionableEvidence, isPriorityEvidence, needSignals } from '@/lib/need-signals';
 import { isRecentDate } from '@/lib/evidence-freshness';
 
 type Row = { id: string; platform: string; text: string; sourceUrl: string; commentUrl?: string; commentId?: string; authorLabel?: string; sourceKeyword?: string; sourceKeywords?: string[]; status: 'new' | 'verified' | 'contacted' | 'dismissed'; note: string; collectedAt: string; commentCreatedAt?: string; updatedAt?: string; verifiedAt?: string; contactedAt?: string; reviewVerdict?: 'need' | 'not-need' | 'unclear'; reviewedAt?: string };
@@ -68,9 +68,9 @@ export default function EvidencePage() {
     (keywordFilter === 'all' || (keywordFilter === 'unknown' ? !row.sourceKeyword && !row.sourceKeywords?.length : row.sourceKeyword === keywordFilter || row.sourceKeywords?.includes(keywordFilter))) &&
     (ageFilter === 'all' || (ageFilter === 'unknown' ? !row.commentCreatedAt : isRecentDate(row.commentCreatedAt, Number(ageFilter)))) &&
     (signalFilter === 'all' ||
-      (signalFilter === 'priority' && isPriorityEvidence(row.text)) ||
+      (signalFilter === 'priority' && isActionableEvidence(row.text, row.reviewVerdict)) ||
       (signalFilter === 'signals' && needSignals(row.text).length > 0) ||
-      (signalFilter === 'missing-link' && isPriorityEvidence(row.text) && !row.commentUrl) ||
+      (signalFilter === 'missing-link' && isActionableEvidence(row.text, row.reviewVerdict) && !row.commentUrl) ||
       (signalFilter === 'verified-missing-link' && row.status === 'verified' && !row.commentUrl) ||
       (signalFilter === 'review-queue' && reviewIds.has(row.id))) &&
     (!query.trim() || `${row.text} ${row.note} ${row.platform} ${row.sourceKeywords?.join(' ') || row.sourceKeyword || ''}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
@@ -114,7 +114,7 @@ export default function EvidencePage() {
     <section className="mt-8 space-y-4"><h2 className="text-lg font-semibold">已保存的线索 · {rows.length}</h2>
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">人工校准 · 近 90 天</h3><p className="mt-1 text-sm text-zinc-700">已判读 {reviewed.length} 条：疑似需求 {reviewed.filter(row => row.reviewVerdict === 'need').length}、非需求 {reviewed.filter(row => row.reviewVerdict === 'not-need').length}、不确定 {reviewed.filter(row => row.reviewVerdict === 'unclear').length}。规则未提示但人工判为需求 {reviewed.filter(row => row.reviewVerdict === 'need' && !isPriorityEvidence(row.text)).length} 条。</p></div><button type="button" onClick={() => { setStatusFilter('all'); setSignalFilter('review-queue'); setAgeFilter('90'); setKeywordFilter('all'); setQuery(''); setPage(1); }} className="rounded-lg bg-zinc-900 px-4 py-2 text-sm text-white">判读下一组 {reviewQueue.length} 条</button></div><p className="mt-2 text-xs text-zinc-600">队列包含规则提示和未提示的评论；判读只评价评论内容，核实原帖和联系进展仍用线索状态记录。新采集数据可能改变尚未判读的队列。</p></div>
       <div className="grid gap-3 sm:grid-cols-3">{([
-        { label: '待核实', count: rows.filter(row => row.status === 'new' && isRecentDate(row.commentCreatedAt) && isPriorityEvidence(row.text)).length, filter: 'new' },
+        { label: '待核实', count: rows.filter(row => row.status === 'new' && isRecentDate(row.commentCreatedAt) && isActionableEvidence(row.text, row.reviewVerdict)).length, filter: 'new' },
         { label: '已核实', count: rows.filter(row => row.status === 'verified').length, filter: 'verified' },
         { label: '已联系', count: rows.filter(row => row.status === 'contacted').length, filter: 'contacted' }
       ] as const).map(item => <button key={item.filter} type="button" onClick={() => { setStatusFilter(item.filter); setSignalFilter(item.filter === 'new' ? 'priority' : 'all'); setAgeFilter(item.filter === 'new' ? '90' : 'all'); setPage(1); }} className="rounded-xl border border-zinc-200 bg-white p-4 text-left hover:border-amber-400"><span className="block text-sm text-zinc-500">{item.label}{item.filter === 'new' ? ' · 近 90 天优先' : ''}</span><strong className="mt-1 block text-2xl">{item.count}</strong></button>)}</div>
@@ -131,7 +131,7 @@ export default function EvidencePage() {
       {visible.map(row => <article key={row.id} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center gap-3 text-sm text-zinc-500"><span>{row.platform}</span><span>搜索词：{row.sourceKeywords?.join('、') || row.sourceKeyword || '未知'}</span><span>评论：{row.commentCreatedAt ? new Date(row.commentCreatedAt).toLocaleString() : '发布时间未知'}</span><span>采集：{new Date(row.collectedAt).toLocaleString()}</span><span>{row.commentId ? `评论 ID：${row.commentId}` : '未记录评论 ID'}</span>{row.verifiedAt && <span>曾核实：{new Date(row.verifiedAt).toLocaleString()}</span>}{row.contactedAt && <span>曾联系：{new Date(row.contactedAt).toLocaleString()}</span>}</div>
         <p className="whitespace-pre-wrap leading-7">{row.text}</p>
-        {needSignals(row.text).length > 0 && <div className="mt-3 flex flex-wrap gap-2">{needSignals(row.text).map(label => <span key={label} className="rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-800">{label}</span>)}</div>}
+        {(needSignals(row.text).length > 0 || row.reviewVerdict === 'need') && <div className="mt-3 flex flex-wrap gap-2">{row.reviewVerdict === 'need' && <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-800">人工判读：疑似需求</span>}{needSignals(row.text).map(label => <span key={label} className="rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-800">{label}</span>)}</div>}
         <div className="mt-4 flex flex-wrap items-center gap-4"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 underline">打开原帖</a>{row.commentUrl ? <a href={row.commentUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 underline">打开已保存的评论链接</a> : <span className="text-xs text-zinc-500">尚无直达评论链接</span>}{row.commentId && <button type="button" onClick={() => void navigator.clipboard.writeText(row.commentId!).catch(() => setError('复制失败，请手动选中评论 ID'))} className="text-xs text-amber-700 underline">复制评论 ID</button>}<select aria-label="线索状态" value={row.status} onChange={e => void update(row, e.target.value as Row['status'], row.note)} className="rounded-lg border border-zinc-300 p-2 text-sm"><option value="new">待核实</option><option value="verified">已核实</option><option value="contacted">已联系</option><option value="dismissed">忽略</option></select></div>
         <label className="mt-4 block text-sm text-zinc-700">人工判读评论是否提出工作需求<select aria-label="人工判读结果" value={row.reviewVerdict || ''} onChange={e => void saveReview(row, (e.target.value || undefined) as Row['reviewVerdict'])} className="mt-2 block w-full rounded-lg border border-zinc-300 bg-white p-2"><option value="">未判读</option><option value="need">疑似真实需求</option><option value="not-need">非需求</option><option value="unclear">不确定</option></select></label>
         <input aria-label="评论分享链接" key={`${row.id}:${row.commentUrl || ''}`} defaultValue={row.commentUrl || ''} onBlur={e => { if (e.target.value !== (row.commentUrl || '')) void saveCommentUrl(row, e.target.value.trim()); }} placeholder="可选：粘贴在抖音核实过的评论分享链接，离开输入框时保存" className="mt-4 w-full rounded-lg border border-zinc-300 p-3 text-sm" />

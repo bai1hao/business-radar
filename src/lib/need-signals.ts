@@ -17,3 +17,9 @@ export function isPriorityEvidence(text: string): boolean {
   const workContext = /(工作|公司|数据|表格|报表|文件|订单|网页|客户|员工|财务|视频|图片|素材|内容|信息|明细)/i.test(text);
   return workContext && concreteTask && (signals.includes('明确求解') || signals.includes('重复劳动') || signals.includes('付费表态'));
 }
+
+export function isActionableEvidence(text: string, verdict?: 'need' | 'not-need' | 'unclear'): boolean {
+  if (verdict === 'need') return true;
+  if (verdict === 'not-need') return false;
+  return isPriorityEvidence(text);
+}
