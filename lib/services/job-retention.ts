@@ -14,7 +14,7 @@ export function pruneExpiredJobs<TJob extends RetainedJob>(
 ): void {
   const now = Date.now();
   for (const [jobId, job] of jobs.entries()) {
-    if (job.status !== 'captured' && job.status !== 'processing' && now - job.startTime > maxAgeMs) {
+    if (job.status !== 'processing' && now - job.startTime > maxAgeMs) {
       jobs.delete(jobId);
     }
   }
@@ -29,9 +29,7 @@ export function trimOldestJobs<TJob extends RetainedJob>(
   }
 
   const sortedJobs = [...jobs.entries()].sort(([, a], [, b]) => a.startTime - b.startTime);
-  const completedFirst = [
-    ...sortedJobs.filter(([, job]) => job.status !== 'processing' && job.status !== 'captured')
-  ];
+  const completedFirst = sortedJobs.filter(([, job]) => job.status !== 'processing');
 
   for (const [jobId] of completedFirst) {
     if (jobs.size <= maxJobs) {

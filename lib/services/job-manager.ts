@@ -101,7 +101,7 @@ export class JobManager {
 
   constructor() {
     this.jobStore = new JsonJobStore<Job>('analysis');
-    this.jobs = this.jobStore.loadAll();
+    this.jobs = this.jobStore.loadAll(JOB_RETENTION.maxJobs);
     this.cleanupExpiredJobs();
     this.priorityScorer = new PriorityScorer();
   }
@@ -187,8 +187,9 @@ export class JobManager {
   }
 
   public analyzeCapturedJob(jobId: string, aiProvider: AIProviderName = getAIProviderName()): boolean {
-    const job = this.jobs.get(jobId);
+    const job = this.jobs.get(jobId) || this.jobStore.load(jobId);
     if (!job || job.status !== 'captured' || !job.rawData?.rawTexts.length) return false;
+    this.jobs.set(jobId, job);
     job.captureOnly = false;
     job.aiProvider = aiProvider;
     this.updateJobStatus(jobId, 'processing', '等待分析...');

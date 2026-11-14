@@ -57,32 +57,16 @@ export class JsonJobStore<TJob extends RuntimeJob> {
     this.directory = path.join(getJobDataRoot(), sanitizePathPart(namespace));
   }
 
-  loadAll(): Map<string, TJob> {
+  loadAll(limit = 100): Map<string, TJob> {
     const jobs = new Map<string, TJob>();
-
-    if (!fs.existsSync(this.directory)) {
-      return jobs;
-    }
-
-    for (const entry of fs.readdirSync(this.directory, { withFileTypes: true })) {
-      if (!entry.isFile() || !entry.name.endsWith('.json')) {
-        continue;
-      }
-
-      const filePath = path.join(this.directory, entry.name);
+    for (const filePath of this.recentPaths(limit)) {
       try {
         const job = JSON.parse(fs.readFileSync(filePath, 'utf8')) as TJob;
         if (!job.jobId || !job.startTime || !job.status) {
           continue;
         }
 
-        if (job.status === 'processing') {
-          job.status = job.rawData?.rawTexts?.length ? 'captured' : 'failed';
-          job.progress = job.status === 'captured' ? '服务重启，已保存采集数据，可重新分析' : '服务重启，采集任务已停止';
-          job.error = job.status === 'failed' ? '采集任务未完成，请重新提交' : undefined;
-          this.save(job);
-        }
-
+        this.recoverInterrupted(job);
         jobs.set(job.jobId, job);
       } catch (error) {
         logJobEvent('warn', 'job_store_load_failed', {
@@ -100,7 +84,9 @@ export class JsonJobStore<TJob extends RuntimeJob> {
     if (!fs.existsSync(filePath)) return null;
     try {
       const job = JSON.parse(fs.readFileSync(filePath, 'utf8')) as TJob;
-      return job.jobId === jobId && job.startTime && job.status ? job : null;
+      if (job.jobId !== jobId || !job.startTime || !job.status) return null;
+      this.recoverInterrupted(job);
+      return job;
     } catch (error) {
       logJobEvent('warn', 'job_store_load_failed', {
         filePath,
@@ -111,17 +97,8 @@ export class JsonJobStore<TJob extends RuntimeJob> {
   }
 
   listSaved(limit = 100): TJob[] {
-    if (!fs.existsSync(this.directory)) return [];
-    const files = fs.readdirSync(this.directory, { withFileTypes: true })
-      .filter(entry => entry.isFile() && entry.name.endsWith('.json'))
-      .map(entry => {
-        const filePath = path.join(this.directory, entry.name);
-        return { filePath, modified: fs.statSync(filePath).mtimeMs };
-      })
-      .sort((a, b) => b.modified - a.modified)
-      .slice(0, limit);
     const jobs: TJob[] = [];
-    for (const { filePath } of files) {
+    for (const filePath of this.recentPaths(limit)) {
       try {
         const job = JSON.parse(fs.readFileSync(filePath, 'utf8')) as TJob;
         if (job.jobId && job.startTime && job.status) jobs.push(job);
@@ -133,6 +110,29 @@ export class JsonJobStore<TJob extends RuntimeJob> {
       }
     }
     return jobs;
+  }
+
+  private recentPaths(limit: number): string[] {
+    if (!fs.existsSync(this.directory)) return [];
+    return fs.readdirSync(this.directory, { withFileTypes: true })
+      .filter(entry => entry.isFile() && entry.name.endsWith('.json'))
+      .map(entry => {
+        const filePath = path.join(this.directory, entry.name);
+        try { return { filePath, modified: fs.statSync(filePath).mtimeMs }; }
+        catch { return null; }
+      })
+      .filter((entry): entry is { filePath: string; modified: number } => entry !== null)
+      .sort((a, b) => b.modified - a.modified)
+      .slice(0, limit)
+      .map(entry => entry.filePath);
+  }
+
+  private recoverInterrupted(job: TJob): void {
+    if (job.status !== 'processing') return;
+    job.status = job.rawData?.rawTexts?.length ? 'captured' : 'failed';
+    job.progress = job.status === 'captured' ? '服务重启，已保存采集数据，可重新分析' : '服务重启，采集任务已停止';
+    job.error = job.status === 'failed' ? '采集任务未完成，请重新提交' : undefined;
+    this.save(job);
   }
 
   save(job: TJob): void {
