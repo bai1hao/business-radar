@@ -384,6 +384,7 @@ export class JobManager {
             platform: comment.platform || job.dataSource,
             text: comment.comment_text,
             sourceUrl: comment.video_url!,
+            sourceTitle: comment.video_title,
             commentId: comment.comment_id,
             contentId: comment.video_id,
             authorLabel: comment.username,

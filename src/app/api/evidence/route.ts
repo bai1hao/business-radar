@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '请填写平台、原文和原帖地址' }, { status: 400 });
   }
   if (!validWebUrl(body.sourceUrl)) return NextResponse.json({ error: '原帖地址必须是有效的网页链接' }, { status: 400 });
+  if (body.sourceTitle !== undefined && (typeof body.sourceTitle !== 'string' || body.sourceTitle.length > 500)) return NextResponse.json({ error: '原帖标题格式无效' }, { status: 400 });
   if (body.commentUrl !== undefined && (typeof body.commentUrl !== 'string' || (body.commentUrl && !validWebUrl(body.commentUrl)))) {
     return NextResponse.json({ error: '评论链接必须是有效的网页地址' }, { status: 400 });
   }
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     if (!Number.isFinite(timestamp) || timestamp > Date.now() + 86400000) return NextResponse.json({ error: '评论发布时间无效' }, { status: 400 });
     commentCreatedAt = new Date(timestamp).toISOString();
   }
-  return NextResponse.json(addEvidence({ platform: body.platform.trim(), text: body.text.trim(), sourceUrl: body.sourceUrl, commentUrl: body.commentUrl || undefined, commentId: body.commentId, contentId: body.contentId, authorLabel: body.authorLabel, commentCreatedAt }), { status: 201 });
+  return NextResponse.json(addEvidence({ platform: body.platform.trim(), text: body.text.trim(), sourceUrl: body.sourceUrl, sourceTitle: body.sourceTitle?.trim() || undefined, commentUrl: body.commentUrl || undefined, commentId: body.commentId, contentId: body.contentId, authorLabel: body.authorLabel, commentCreatedAt }), { status: 201 });
 }
 
 export async function PATCH(request: NextRequest) {

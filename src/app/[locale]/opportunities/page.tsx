@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { isRecentDate } from '@/lib/evidence-freshness';
 
-type Evidence = { id: string; text: string; sourceUrl: string; commentUrl?: string; commentCreatedAt?: string; status: string };
+type Evidence = { id: string; text: string; sourceUrl: string; sourceTitle?: string; commentUrl?: string; commentCreatedAt?: string; status: string };
 type Opportunity = { id: string; title: string; note: string; evidenceIds: string[]; updatedAt: string };
 
 export default function OpportunitiesPage() {

@@ -9,6 +9,7 @@ export interface Evidence {
   platform: string;
   text: string;
   sourceUrl: string;
+  sourceTitle?: string;
   commentUrl?: string;
   commentId?: string;
   contentId?: string;
@@ -58,6 +59,10 @@ export function addEvidenceBatch(inputs: Array<Pick<Evidence, 'platform' | 'text
   for (const input of inputs) {
     const existing = input.commentId ? byComment.get(`${input.platform}:${input.commentId}`) : undefined;
     if (existing) {
+      if (!existing.sourceTitle && input.sourceTitle) {
+        existing.sourceTitle = input.sourceTitle;
+        changed = true;
+      }
       if (input.sourceKeyword && ![...(existing.sourceKeywords || []), existing.sourceKeyword].includes(input.sourceKeyword)) {
         existing.sourceKeywords = [...new Set([...(existing.sourceKeywords || []), existing.sourceKeyword, input.sourceKeyword].filter((value): value is string => Boolean(value)))];
         changed = true;
@@ -66,7 +71,7 @@ export function addEvidenceBatch(inputs: Array<Pick<Evidence, 'platform' | 'text
       continue;
     }
   const row: Evidence = {
-    id: randomUUID(), platform: input.platform, text: input.text, sourceUrl: input.sourceUrl,
+    id: randomUUID(), platform: input.platform, text: input.text, sourceUrl: input.sourceUrl, sourceTitle: input.sourceTitle,
     commentUrl: input.commentUrl, commentId: input.commentId, contentId: input.contentId, authorLabel: input.authorLabel,
     status: 'new', note: '', collectedAt: input.collectedAt || new Date().toISOString(),
     commentCreatedAt: input.commentCreatedAt, sourceKeyword: input.sourceKeyword,
