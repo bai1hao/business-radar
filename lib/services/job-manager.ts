@@ -85,6 +85,16 @@ export interface Job {
   aiProvider?: AIProviderName;
 }
 
+type JobSummary = Pick<Job, 'jobId' | 'status' | 'progress' | 'keywords' | 'startTime' | 'crawlStats' | 'error' | 'aiProvider'>;
+
+function summarizeJob(job: Job): JobSummary {
+  return {
+    jobId: job.jobId, status: job.status, progress: job.progress,
+    keywords: job.keywords, startTime: job.startTime, crawlStats: job.crawlStats,
+    error: job.error, aiProvider: job.aiProvider
+  };
+}
+
 export interface CreateJobOptions {
   keywords: string[];
   limit?: number;
@@ -98,6 +108,7 @@ export class JobManager {
   private jobStore: JsonJobStore<Job>;
   private priorityScorer: PriorityScorer;
   private timedOutJobs: Set<string> = new Set();
+  private savedSummaryCache: { expiresAt: number; jobs: JobSummary[] } | null = null;
 
   constructor() {
     this.jobStore = new JsonJobStore<Job>('analysis');
@@ -179,10 +190,16 @@ export class JobManager {
     return this.jobs.get(jobId) || this.jobStore.load(jobId);
   }
 
-  public listJobs(): Job[] {
+  public listJobs(): JobSummary[] {
     this.cleanupExpiredJobs();
-    const jobs = new Map(this.jobStore.listSaved(JOB_RETENTION.maxJobs).map(job => [job.jobId, job]));
-    for (const job of this.jobs.values()) jobs.set(job.jobId, job);
+    if (!this.savedSummaryCache || this.savedSummaryCache.expiresAt < Date.now()) {
+      this.savedSummaryCache = {
+        expiresAt: Date.now() + 30_000,
+        jobs: this.jobStore.listSaved(JOB_RETENTION.maxJobs).map(summarizeJob)
+      };
+    }
+    const jobs = new Map(this.savedSummaryCache.jobs.map(job => [job.jobId, job]));
+    for (const job of this.jobs.values()) jobs.set(job.jobId, summarizeJob(job));
     return [...jobs.values()].sort((a, b) => b.startTime - a.startTime).slice(0, JOB_RETENTION.maxJobs);
   }
 
