@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { addEvidence, listEvidence, updateEvidence, EvidenceStatus } from '../../../../lib/services/evidence-store';
+import { addEvidence, listEvidence, updateEvidence, EvidenceStatus, ReviewVerdict } from '../../../../lib/services/evidence-store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const statuses: EvidenceStatus[] = ['new', 'verified', 'contacted', 'dismissed'];
+const verdicts: ReviewVerdict[] = ['need', 'not-need', 'unclear'];
 
 function validWebUrl(value: string): boolean {
   try { return ['http:', 'https:'].includes(new URL(value).protocol); } catch { return false; }
@@ -42,6 +43,9 @@ export async function PATCH(request: NextRequest) {
       if (!validWebUrl(body.commentUrl)) return NextResponse.json({ error: '评论链接必须是有效的网页地址' }, { status: 400 });
     }
   }
-  const row = updateEvidence(body.id, body.status, body.note, body.commentUrl);
+  if (body.reviewVerdict !== undefined && body.reviewVerdict !== null && !verdicts.includes(body.reviewVerdict)) {
+    return NextResponse.json({ error: '需求判读结果无效' }, { status: 400 });
+  }
+  const row = updateEvidence(body.id, body.status, body.note, body.commentUrl, body.reviewVerdict);
   return row ? NextResponse.json(row) : NextResponse.json({ error: '线索不存在' }, { status: 404 });
 }

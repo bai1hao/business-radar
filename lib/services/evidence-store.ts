@@ -3,6 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 export type EvidenceStatus = 'new' | 'verified' | 'contacted' | 'dismissed';
+export type ReviewVerdict = 'need' | 'not-need' | 'unclear';
 export interface Evidence {
   id: string;
   platform: string;
@@ -18,6 +19,8 @@ export interface Evidence {
   updatedAt?: string;
   verifiedAt?: string;
   contactedAt?: string;
+  reviewVerdict?: ReviewVerdict;
+  reviewedAt?: string;
   commentCreatedAt?: string;
   sourceKeyword?: string;
   sourceKeywords?: string[];
@@ -78,7 +81,7 @@ export function addEvidenceBatch(inputs: Array<Pick<Evidence, 'platform' | 'text
   return result;
 }
 
-export function updateEvidence(id: string, status: EvidenceStatus, note: string, commentUrl?: string): Evidence | null {
+export function updateEvidence(id: string, status: EvidenceStatus, note: string, commentUrl?: string, reviewVerdict?: ReviewVerdict | null): Evidence | null {
   const rows = read();
   const row = rows.find(item => item.id === id);
   if (!row) return null;
@@ -88,6 +91,10 @@ export function updateEvidence(id: string, status: EvidenceStatus, note: string,
   row.status = status;
   row.note = note;
   if (commentUrl !== undefined) row.commentUrl = commentUrl;
+  if (reviewVerdict !== undefined) {
+    row.reviewVerdict = reviewVerdict || undefined;
+    row.reviewedAt = reviewVerdict ? now : undefined;
+  }
   row.updatedAt = now;
   write(rows);
   return row;
