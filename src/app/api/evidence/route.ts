@@ -24,13 +24,16 @@ export async function POST(request: NextRequest) {
   if (body.commentUrl !== undefined && (typeof body.commentUrl !== 'string' || (body.commentUrl && !validWebUrl(body.commentUrl)))) {
     return NextResponse.json({ error: '评论链接必须是有效的网页地址' }, { status: 400 });
   }
+  if (body.contactUrl !== undefined && (typeof body.contactUrl !== 'string' || (body.contactUrl && !validWebUrl(body.contactUrl)))) {
+    return NextResponse.json({ error: '联系入口必须是有效的网页地址' }, { status: 400 });
+  }
   let commentCreatedAt: string | undefined;
   if (body.commentCreatedAt) {
     const timestamp = typeof body.commentCreatedAt === 'string' ? Date.parse(body.commentCreatedAt) : NaN;
     if (!Number.isFinite(timestamp) || timestamp > Date.now() + 86400000) return NextResponse.json({ error: '评论发布时间无效' }, { status: 400 });
     commentCreatedAt = new Date(timestamp).toISOString();
   }
-  return NextResponse.json(addEvidence({ platform: body.platform.trim(), text: body.text.trim(), sourceUrl: body.sourceUrl, sourceTitle: body.sourceTitle?.trim() || undefined, commentUrl: body.commentUrl || undefined, commentId: body.commentId, contentId: body.contentId, authorLabel: body.authorLabel, commentCreatedAt }), { status: 201 });
+  return NextResponse.json(addEvidence({ platform: body.platform.trim(), text: body.text.trim(), sourceUrl: body.sourceUrl, sourceTitle: body.sourceTitle?.trim() || undefined, commentUrl: body.commentUrl || undefined, contactUrl: body.contactUrl || undefined, commentId: body.commentId, contentId: body.contentId, authorLabel: body.authorLabel, commentCreatedAt }), { status: 201 });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -44,9 +47,12 @@ export async function PATCH(request: NextRequest) {
       if (!validWebUrl(body.commentUrl)) return NextResponse.json({ error: '评论链接必须是有效的网页地址' }, { status: 400 });
     }
   }
+  if (body.contactUrl !== undefined && (typeof body.contactUrl !== 'string' || (body.contactUrl && !validWebUrl(body.contactUrl)))) {
+    return NextResponse.json({ error: '联系入口必须是有效的网页地址' }, { status: 400 });
+  }
   if (body.reviewVerdict !== undefined && body.reviewVerdict !== null && !verdicts.includes(body.reviewVerdict)) {
     return NextResponse.json({ error: '需求判读结果无效' }, { status: 400 });
   }
-  const row = updateEvidence(body.id, body.status, body.note, body.commentUrl, body.reviewVerdict);
+  const row = updateEvidence(body.id, body.status, body.note, body.commentUrl, body.reviewVerdict, body.contactUrl);
   return row ? NextResponse.json(row) : NextResponse.json({ error: '线索不存在' }, { status: 404 });
 }

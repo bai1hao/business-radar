@@ -18,7 +18,7 @@ const jobs = [];
 const conflicts = [];
 let jobFilesSeen = 0;
 const comparedFields = {
-  'evidence.json': ['text', 'sourceUrl', 'sourceTitle', 'commentUrl', 'commentCreatedAt', 'sourceKeyword', 'sourceKeywords', 'status', 'note', 'reviewVerdict', 'reviewedAt', 'verifiedAt', 'contactedAt', 'updatedAt'],
+  'evidence.json': ['text', 'sourceUrl', 'sourceTitle', 'commentUrl', 'contactUrl', 'commentCreatedAt', 'sourceKeyword', 'sourceKeywords', 'status', 'note', 'reviewVerdict', 'reviewedAt', 'verifiedAt', 'contactedAt', 'updatedAt'],
   'opportunities.json': ['title', 'note', 'evidenceIds', 'updatedAt']
 };
 

@@ -11,6 +11,7 @@ export interface Evidence {
   sourceUrl: string;
   sourceTitle?: string;
   commentUrl?: string;
+  contactUrl?: string;
   commentId?: string;
   contentId?: string;
   authorLabel?: string;
@@ -72,7 +73,7 @@ export function addEvidenceBatch(inputs: Array<Pick<Evidence, 'platform' | 'text
     }
   const row: Evidence = {
     id: randomUUID(), platform: input.platform, text: input.text, sourceUrl: input.sourceUrl, sourceTitle: input.sourceTitle,
-    commentUrl: input.commentUrl, commentId: input.commentId, contentId: input.contentId, authorLabel: input.authorLabel,
+    commentUrl: input.commentUrl, contactUrl: input.contactUrl, commentId: input.commentId, contentId: input.contentId, authorLabel: input.authorLabel,
     status: 'new', note: '', collectedAt: input.collectedAt || new Date().toISOString(),
     commentCreatedAt: input.commentCreatedAt, sourceKeyword: input.sourceKeyword,
     sourceKeywords: input.sourceKeyword ? [input.sourceKeyword] : undefined
@@ -86,7 +87,7 @@ export function addEvidenceBatch(inputs: Array<Pick<Evidence, 'platform' | 'text
   return result;
 }
 
-export function updateEvidence(id: string, status: EvidenceStatus, note: string, commentUrl?: string, reviewVerdict?: ReviewVerdict | null): Evidence | null {
+export function updateEvidence(id: string, status: EvidenceStatus, note: string, commentUrl?: string, reviewVerdict?: ReviewVerdict | null, contactUrl?: string): Evidence | null {
   const rows = read();
   const row = rows.find(item => item.id === id);
   if (!row) return null;
@@ -96,6 +97,7 @@ export function updateEvidence(id: string, status: EvidenceStatus, note: string,
   row.status = status;
   row.note = note;
   if (commentUrl !== undefined) row.commentUrl = commentUrl;
+  if (contactUrl !== undefined) row.contactUrl = contactUrl;
   if (reviewVerdict !== undefined) {
     row.reviewVerdict = reviewVerdict || undefined;
     row.reviewedAt = reviewVerdict ? now : undefined;

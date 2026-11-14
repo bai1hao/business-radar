@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react';
 import { isActionableEvidence, isPriorityEvidence, needSignals } from '@/lib/need-signals';
 import { isRecentDate } from '@/lib/evidence-freshness';
 
-type Row = { id: string; platform: string; text: string; sourceUrl: string; sourceTitle?: string; commentUrl?: string; commentId?: string; authorLabel?: string; sourceKeyword?: string; sourceKeywords?: string[]; status: 'new' | 'verified' | 'contacted' | 'dismissed'; note: string; collectedAt: string; commentCreatedAt?: string; updatedAt?: string; verifiedAt?: string; contactedAt?: string; reviewVerdict?: 'need' | 'not-need' | 'unclear'; reviewedAt?: string };
+type Row = { id: string; platform: string; text: string; sourceUrl: string; sourceTitle?: string; commentUrl?: string; contactUrl?: string; commentId?: string; authorLabel?: string; sourceKeyword?: string; sourceKeywords?: string[]; status: 'new' | 'verified' | 'contacted' | 'dismissed'; note: string; collectedAt: string; commentCreatedAt?: string; updatedAt?: string; verifiedAt?: string; contactedAt?: string; reviewVerdict?: 'need' | 'not-need' | 'unclear'; reviewedAt?: string };
 
 export default function EvidencePage() {
   const [rows, setRows] = useState<Row[]>([]);
-  const [form, setForm] = useState({ platform: 'douyin', text: '', sourceUrl: '', sourceTitle: '', commentUrl: '', commentId: '', commentCreatedAt: '' });
+  const [form, setForm] = useState({ platform: 'douyin', text: '', sourceUrl: '', sourceTitle: '', commentUrl: '', contactUrl: '', commentId: '', commentCreatedAt: '' });
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('new');
@@ -34,7 +34,7 @@ export default function EvidencePage() {
   async function save() {
     const response = await fetch('/api/evidence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
     if (!response.ok) { setError((await response.json()).error); return; }
-    setError(''); setForm({ ...form, text: '', sourceUrl: '', sourceTitle: '', commentUrl: '', commentId: '', commentCreatedAt: '' }); await refresh();
+    setError(''); setForm({ ...form, text: '', sourceUrl: '', sourceTitle: '', commentUrl: '', contactUrl: '', commentId: '', commentCreatedAt: '' }); await refresh();
   }
   async function update(row: Row, status: Row['status'], note: string) {
     const response = await fetch('/api/evidence', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: row.id, status, note }) });
@@ -45,6 +45,11 @@ export default function EvidencePage() {
   async function saveCommentUrl(row: Row, commentUrl: string) {
     const response = await fetch('/api/evidence', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: row.id, status: row.status, note: row.note, commentUrl }) });
     if (!response.ok) { setError((await response.json()).error || '评论链接保存失败'); return; }
+    setError(''); await refresh();
+  }
+  async function saveContactUrl(row: Row, contactUrl: string) {
+    const response = await fetch('/api/evidence', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: row.id, status: row.status, note: row.note, contactUrl }) });
+    if (!response.ok) { setError((await response.json()).error || '联系入口保存失败'); return; }
     setError(''); await refresh();
   }
 
@@ -76,14 +81,14 @@ export default function EvidencePage() {
     (!query.trim() || `${row.text} ${row.sourceTitle || ''} ${row.note} ${row.platform} ${row.sourceKeywords?.join(' ') || row.sourceKeyword || ''}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
   );
   function exportFiltered() {
-    const headers = ['平台', '来源搜索词', '原帖标题', '评论原文', '需求信号', '状态', '需求判读', '判读时间', '原帖链接', '评论分享链接', '评论ID', '备注', '评论发布时间', '采集时间', '核实时间', '联系时间', '最后修改时间'];
+    const headers = ['平台', '来源搜索词', '原帖标题', '评论原文', '需求信号', '状态', '需求判读', '判读时间', '原帖链接', '评论分享链接', '联系入口', '评论ID', '备注', '评论发布时间', '采集时间', '核实时间', '联系时间', '最后修改时间'];
     const statusNames = { new: '待核实', verified: '已核实', contacted: '已联系', dismissed: '忽略' };
     const safeCell = (value: string) => {
       const protectedValue = /^[\s]*[=+\-@]/.test(value) ? `'${value}` : value;
       return `"${protectedValue.replace(/"/g, '""')}"`;
     };
     const verdictNames = { need: '疑似真实需求', 'not-need': '非需求', unclear: '不确定' };
-    const lines = [headers, ...filtered.map(row => [row.platform, row.sourceKeywords?.join('、') || row.sourceKeyword || '', row.sourceTitle || '', row.text, needSignals(row.text).join('、'), statusNames[row.status], row.reviewVerdict ? verdictNames[row.reviewVerdict] : '', row.reviewedAt || '', row.sourceUrl, row.commentUrl || '', row.commentId || '', row.note, row.commentCreatedAt || '', row.collectedAt, row.verifiedAt || '', row.contactedAt || '', row.updatedAt || ''])];
+    const lines = [headers, ...filtered.map(row => [row.platform, row.sourceKeywords?.join('、') || row.sourceKeyword || '', row.sourceTitle || '', row.text, needSignals(row.text).join('、'), statusNames[row.status], row.reviewVerdict ? verdictNames[row.reviewVerdict] : '', row.reviewedAt || '', row.sourceUrl, row.commentUrl || '', row.contactUrl || '', row.commentId || '', row.note, row.commentCreatedAt || '', row.collectedAt, row.verifiedAt || '', row.contactedAt || '', row.updatedAt || ''])];
     const csv = '\uFEFF' + lines.map(line => line.map(safeCell).join(',')).join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
@@ -105,6 +110,7 @@ export default function EvidencePage() {
         <input aria-label="原帖链接" className="rounded-lg border border-zinc-300 p-3" placeholder="原帖链接（必填）" value={form.sourceUrl} onChange={e => setForm({ ...form, sourceUrl: e.target.value })} />
         <input aria-label="原帖标题" className="rounded-lg border border-zinc-300 p-3" placeholder="原帖标题（可选，有助于理解短评论）" value={form.sourceTitle} onChange={e => setForm({ ...form, sourceTitle: e.target.value })} />
         <input aria-label="评论分享链接" className="rounded-lg border border-zinc-300 p-3" placeholder="评论分享链接（可选，确认可打开后填写）" value={form.commentUrl} onChange={e => setForm({ ...form, commentUrl: e.target.value })} />
+        <input aria-label="联系入口" className="rounded-lg border border-zinc-300 p-3" placeholder="联系入口（可选，确认后填写作者主页等链接）" value={form.contactUrl} onChange={e => setForm({ ...form, contactUrl: e.target.value })} />
         <input aria-label="评论 ID" className="rounded-lg border border-zinc-300 p-3" placeholder="评论 ID（可选）" value={form.commentId} onChange={e => setForm({ ...form, commentId: e.target.value })} />
         <label className="text-sm text-zinc-600">评论发布时间（可选）<input aria-label="评论发布时间" type="datetime-local" className="mt-1 w-full rounded-lg border border-zinc-300 p-3" value={form.commentCreatedAt} onChange={e => setForm({ ...form, commentCreatedAt: e.target.value })} /></label>
         <textarea aria-label="需求原文" className="rounded-lg border border-zinc-300 p-3 md:col-span-2" placeholder="复制原帖或评论原文" value={form.text} onChange={e => setForm({ ...form, text: e.target.value })} />
@@ -137,6 +143,8 @@ export default function EvidencePage() {
         <div className="mt-4 flex flex-wrap items-center gap-4"><a href={row.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 underline">打开原帖</a>{row.commentUrl ? <a href={row.commentUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-amber-700 underline">打开已保存的评论链接</a> : <span className="text-xs text-zinc-500">尚无直达评论链接</span>}{row.commentId && <button type="button" onClick={() => void navigator.clipboard.writeText(row.commentId!).catch(() => setError('复制失败，请手动选中评论 ID'))} className="text-xs text-amber-700 underline">复制评论 ID</button>}<select aria-label="线索状态" value={row.status} onChange={e => void update(row, e.target.value as Row['status'], row.note)} className="rounded-lg border border-zinc-300 p-2 text-sm"><option value="new">待核实</option><option value="verified">已核实</option><option value="contacted">已联系</option><option value="dismissed">忽略</option></select></div>
         <label className="mt-4 block text-sm text-zinc-700">人工判读评论是否提出工作需求<select aria-label="人工判读结果" value={row.reviewVerdict || ''} onChange={e => void saveReview(row, (e.target.value || undefined) as Row['reviewVerdict'])} className="mt-2 block w-full rounded-lg border border-zinc-300 bg-white p-2"><option value="">未判读</option><option value="need">疑似真实需求</option><option value="not-need">非需求</option><option value="unclear">不确定</option></select></label>
         <input aria-label="评论分享链接" key={`${row.id}:${row.commentUrl || ''}`} defaultValue={row.commentUrl || ''} onBlur={e => { if (e.target.value !== (row.commentUrl || '')) void saveCommentUrl(row, e.target.value.trim()); }} placeholder="可选：粘贴在抖音核实过的评论分享链接，离开输入框时保存" className="mt-4 w-full rounded-lg border border-zinc-300 p-3 text-sm" />
+        <div className="mt-3 flex flex-wrap items-center gap-4"><button type="button" onClick={() => void navigator.clipboard.writeText(row.text).catch(() => setError('复制失败，请手动选中评论原文'))} className="text-xs text-amber-700 underline">复制评论原文</button>{row.contactUrl && <a href={row.contactUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline">打开联系入口</a>}</div>
+        <input aria-label="联系入口" key={`${row.id}:${row.contactUrl || ''}`} defaultValue={row.contactUrl || ''} onBlur={e => { if (e.target.value !== (row.contactUrl || '')) void saveContactUrl(row, e.target.value.trim()); }} placeholder="可选：人工确认后粘贴作者主页或其他联系入口，离开输入框时保存" className="mt-3 w-full rounded-lg border border-zinc-300 p-3 text-sm" />
         <textarea aria-label="线索备注" defaultValue={row.note} onBlur={e => { if (e.target.value !== row.note) void update(row, row.status, e.target.value); }} placeholder="备注：需求背景、联系进展…" className="mt-4 w-full rounded-lg border border-zinc-300 p-3 text-sm" />
       </article>)}
       {filtered.length === 0 && <p className="rounded-2xl border border-dashed border-zinc-300 p-10 text-center text-zinc-500">没有匹配的线索。换个关键词或状态试试。</p>}
