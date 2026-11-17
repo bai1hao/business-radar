@@ -103,9 +103,13 @@
   "results": {
     "viewDetails": "View Details",
     "signals": "signals",
-    "overallIndex": "Overall Index"
+    "overallIndex": "Overall Index",
+    "videoSource": "Video titles · topic lead",
+    "commentSource": "Comments · verify demand"
   },
   "detail": {
+    "videoSource": "Video titles · not proof of demand",
+    "commentSource": "User comments · verify manually",
     "tabs": {
       "pain": "Pain Analysis",
       "market": "Market Landscape",

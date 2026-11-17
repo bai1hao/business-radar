@@ -103,9 +103,13 @@
   "results": {
     "viewDetails": "查看详情",
     "signals": "signals",
-    "overallIndex": "综合指数"
+    "overallIndex": "综合指数",
+    "videoSource": "视频标题 · 话题线索",
+    "commentSource": "用户评论 · 待核实"
   },
   "detail": {
+    "videoSource": "视频标题 · 不能直接证明需求",
+    "commentSource": "用户评论 · 待人工核实",
     "tabs": {
       "pain": "痛点分析",
       "market": "市场格局",

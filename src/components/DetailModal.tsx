@@ -23,6 +23,7 @@ import { priorityColors, getScoreColor, getCompetitionLabel } from '@/lib/design
 interface ClusterResult {
   id: string;
   size: number;
+  source_type?: 'video' | 'comment';
   analysis: {
     one_line_pain: string;
     paid_interest: "High" | "Medium" | "Low";
@@ -309,6 +310,9 @@ export default function DetailModal({ isOpen, onClose, result }: DetailModalProp
                 <span className="text-xs text-neutral-400 font-mono">
                   #Cluster-{result.id.slice(0, 6)}
                 </span>
+                {result.source_type && <span className="rounded-full bg-neutral-200 px-2 py-1 text-xs text-neutral-700">
+                  {result.source_type === 'video' ? t('videoSource') : t('commentSource')}
+                </span>}
               </div>
               <h2 className="text-lg font-bold text-neutral-900 leading-snug">
                 {result.analysis.one_line_pain}

@@ -536,6 +536,7 @@ export class JobManager {
           const result: ClusterResult = {
             id: clusteringService.generateClusterId(i),
             size: cluster.length,
+            source_type: i < videoClusterCount ? 'video' : 'comment',
             analysis: {
               one_line_pain: analysis.one_line_pain || '用户痛点待分析',
               paid_interest: analysis.paid_interest || 'Medium',

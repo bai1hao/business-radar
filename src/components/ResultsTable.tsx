@@ -7,6 +7,7 @@ import { priorityColors, paidInterestColors, getScoreColor } from '@/lib/design-
 interface ClusterResult {
   id: string;
   size: number;
+  source_type?: 'video' | 'comment';
   analysis: {
     one_line_pain: string;
     paid_interest: "High" | "Medium" | "Low";
@@ -161,6 +162,9 @@ export default function ResultsTable({ results, onRowClick }: ResultsTableProps)
                   <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${paidStyle}`}>
                     $ {result.analysis.paid_interest}
                   </span>
+                  {result.source_type && <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-medium text-neutral-600">
+                    {result.source_type === 'video' ? t('videoSource') : t('commentSource')}
+                  </span>}
                 </div>
 
                 {/* 标题 */}

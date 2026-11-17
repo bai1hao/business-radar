@@ -22,6 +22,7 @@ export interface ClusteringResult {
 export interface ClusterResult {
   id: string;
   size: number;
+  source_type?: 'video' | 'comment';
   analysis: {
     one_line_pain: string;
     paid_interest: "High" | "Medium" | "Low";
