@@ -1,6 +1,42 @@
 import { logger } from './logger';
 import { AIChatProvider, AIProviderName, createAIChatProvider } from './ai-provider';
 
+const textField = { type: 'string' } as const;
+const stringList = { type: 'array', items: textField } as const;
+const deepAnalysisSchema = {
+  name: 'business_radar_analysis',
+  schema: {
+    type: 'object',
+    properties: {
+      one_line_pain: textField,
+      paid_interest: { type: 'string', enum: ['High', 'Medium', 'Low'] },
+      rationale: textField,
+      potential_product: textField,
+      pain_depth: {
+        type: 'object', properties: {
+          surface_pain: textField, root_causes: stringList, user_scenarios: stringList,
+          emotional_intensity: { type: 'number' }
+        }, required: ['surface_pain', 'root_causes', 'user_scenarios', 'emotional_intensity']
+      },
+      market_landscape: {
+        type: 'object', properties: {
+          existing_solutions: { type: 'array', items: { type: 'object', properties: { name: textField, limitation: textField }, required: ['name', 'limitation'] } },
+          unmet_needs: stringList, opportunity: textField
+        }, required: ['existing_solutions', 'unmet_needs', 'opportunity']
+      },
+      mvp_plan: {
+        type: 'object', properties: {
+          core_features: stringList,
+          validation_hypotheses: { type: 'array', items: { type: 'object', properties: { hypothesis: textField, test_method: textField }, required: ['hypothesis', 'test_method'] } },
+          first_users: textField, timeline: textField, estimated_cost: textField
+        }, required: ['core_features', 'validation_hypotheses', 'first_users', 'timeline', 'estimated_cost']
+      },
+      market_size_score: { type: 'number' }, keyword_relevance: { type: 'number' }
+    },
+    required: ['one_line_pain', 'paid_interest', 'rationale', 'potential_product', 'pain_depth', 'market_landscape', 'mvp_plan', 'market_size_score', 'keyword_relevance']
+  }
+} as const;
+
 // 深度分析结果接口
 export interface DeepAnalysisResult {
   // 原有字段
@@ -177,7 +213,12 @@ ${texts.join('\n\n')}
               temperature: 1.0
             }
           : {
-              temperature: 0.6
+              temperature: this.provider.provider === 'lmstudio' ? 0.2 : 0.6,
+              ...(this.provider.provider === 'lmstudio' ? {
+                maxTokens: 4096,
+                timeoutMs: 180000,
+                extraBody: { response_format: { type: 'json_schema', json_schema: deepAnalysisSchema } }
+              } : {})
             }
       );
 
