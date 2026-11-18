@@ -2,11 +2,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
+export type OpportunityDecision = 'research' | 'experiment' | 'paused' | 'rejected';
 export interface Opportunity {
   id: string;
   title: string;
   note: string;
   evidenceIds: string[];
+  decision?: OpportunityDecision;
+  decisionReason?: string;
+  decisionAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,12 +42,18 @@ export function createOpportunity(title: string): Opportunity {
   return row;
 }
 
-export function updateOpportunity(id: string, changes: { title?: string; note?: string; addEvidenceId?: string; removeEvidenceId?: string }): Opportunity | null {
+export function updateOpportunity(id: string, changes: { title?: string; note?: string; decision?: OpportunityDecision; decisionReason?: string; addEvidenceId?: string; removeEvidenceId?: string }): Opportunity | null {
   const rows = read();
   const row = rows.find(item => item.id === id);
   if (!row) return null;
   if (changes.title !== undefined) row.title = changes.title;
   if (changes.note !== undefined) row.note = changes.note;
+  if (changes.decision !== undefined && changes.decision !== (row.decision || 'research')) {
+    row.decision = changes.decision;
+    row.decisionAt = new Date().toISOString();
+    if (changes.decisionReason === undefined) row.decisionReason = '';
+  }
+  if (changes.decisionReason !== undefined) row.decisionReason = changes.decisionReason;
   if (changes.addEvidenceId && !row.evidenceIds.includes(changes.addEvidenceId)) row.evidenceIds.push(changes.addEvidenceId);
   if (changes.removeEvidenceId) row.evidenceIds = row.evidenceIds.filter(evidenceId => evidenceId !== changes.removeEvidenceId);
   row.updatedAt = new Date().toISOString();

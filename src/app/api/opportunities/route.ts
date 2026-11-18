@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createOpportunity, listOpportunities, updateOpportunity } from '../../../../lib/services/opportunity-store';
+import { createOpportunity, listOpportunities, updateOpportunity, OpportunityDecision } from '../../../../lib/services/opportunity-store';
 import { listEvidence } from '../../../../lib/services/evidence-store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+const decisions: OpportunityDecision[] = ['research', 'experiment', 'paused', 'rejected'];
 
 export async function GET() {
   return NextResponse.json(listOpportunities(), { headers: { 'Cache-Control': 'no-store' } });
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const body = await request.json().catch(() => null);
   if (!body || typeof body.id !== 'string') return NextResponse.json({ error: '无效主题' }, { status: 400 });
-  const changes: { title?: string; note?: string; addEvidenceId?: string; removeEvidenceId?: string } = {};
+  const changes: { title?: string; note?: string; decision?: OpportunityDecision; decisionReason?: string; addEvidenceId?: string; removeEvidenceId?: string } = {};
   if (body.title !== undefined) {
     if (typeof body.title !== 'string' || !body.title.trim() || body.title.length > 120) return NextResponse.json({ error: '主题名称无效' }, { status: 400 });
     changes.title = body.title.trim();
@@ -28,6 +29,14 @@ export async function PATCH(request: NextRequest) {
   if (body.note !== undefined) {
     if (typeof body.note !== 'string' || body.note.length > 4000) return NextResponse.json({ error: '备注过长' }, { status: 400 });
     changes.note = body.note;
+  }
+  if (body.decision !== undefined) {
+    if (!decisions.includes(body.decision)) return NextResponse.json({ error: '主题决策无效' }, { status: 400 });
+    changes.decision = body.decision;
+  }
+  if (body.decisionReason !== undefined) {
+    if (typeof body.decisionReason !== 'string' || body.decisionReason.length > 2000) return NextResponse.json({ error: '判断理由不能超过 2000 字' }, { status: 400 });
+    changes.decisionReason = body.decisionReason;
   }
   if (body.addEvidenceId !== undefined) {
     if (typeof body.addEvidenceId !== 'string' || !listEvidence().some(row => row.id === body.addEvidenceId)) return NextResponse.json({ error: '证据不存在' }, { status: 400 });
