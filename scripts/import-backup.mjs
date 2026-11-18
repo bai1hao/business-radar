@@ -18,7 +18,7 @@ const jobs = [];
 const conflicts = [];
 let jobFilesSeen = 0;
 const comparedFields = {
-  'evidence.json': ['text', 'sourceUrl', 'sourceTitle', 'commentUrl', 'contactUrl', 'commentCreatedAt', 'sourceKeyword', 'sourceKeywords', 'status', 'note', 'reviewVerdict', 'reviewedAt', 'verifiedAt', 'contactedAt', 'contactOutcome', 'currentWorkaround', 'trialInterest', 'paymentIntent', 'paymentEvidence', 'hoursLostPerMonth', 'currentSpendYuanPerMonth', 'nextFollowUpAt', 'updatedAt'],
+  'evidence.json': ['text', 'sourceUrl', 'sourceTitle', 'commentUrl', 'contactUrl', 'commentCreatedAt', 'sourceKeyword', 'sourceKeywords', 'status', 'note', 'reviewVerdict', 'reviewedAt', 'verifiedAt', 'contactedAt', 'contactOutcome', 'contactPersonRef', 'currentWorkaround', 'trialInterest', 'paymentIntent', 'paymentEvidence', 'hoursLostPerMonth', 'currentSpendYuanPerMonth', 'nextFollowUpAt', 'updatedAt'],
   'opportunities.json': ['title', 'note', 'evidenceIds', 'decision', 'decisionReason', 'counterEvidence', 'openQuestions', 'decisionAt', 'decisionHistory', 'updatedAt']
 };
 

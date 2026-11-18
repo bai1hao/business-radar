@@ -57,6 +57,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: '需求判读结果无效' }, { status: 400 });
   }
   if (body.contactOutcome !== undefined && body.contactOutcome !== '' && !contactOutcomes.includes(body.contactOutcome)) return NextResponse.json({ error: '联系结果无效' }, { status: 400 });
+  if (body.contactPersonRef !== undefined && (typeof body.contactPersonRef !== 'string' || body.contactPersonRef.length > 120)) return NextResponse.json({ error: '联系人标识不能超过 120 字' }, { status: 400 });
   if (body.trialInterest !== undefined && body.trialInterest !== '' && !trialInterests.includes(body.trialInterest)) return NextResponse.json({ error: '试用意愿无效' }, { status: 400 });
   if (body.paymentIntent !== undefined && body.paymentIntent !== '' && !paymentIntents.includes(body.paymentIntent)) return NextResponse.json({ error: '付费意愿无效' }, { status: 400 });
   if (body.paymentEvidence !== undefined && (typeof body.paymentEvidence !== 'string' || body.paymentEvidence.length > 2000)) return NextResponse.json({ error: '付费表态原话不能超过 2000 字' }, { status: 400 });
@@ -65,7 +66,7 @@ export async function PATCH(request: NextRequest) {
   }
   if (body.currentWorkaround !== undefined && (typeof body.currentWorkaround !== 'string' || body.currentWorkaround.length > 2000)) return NextResponse.json({ error: '现有解决办法不能超过 2000 字' }, { status: 400 });
   if (body.nextFollowUpAt !== undefined && (typeof body.nextFollowUpAt !== 'string' || (body.nextFollowUpAt && (!/^\d{4}-\d{2}-\d{2}$/.test(body.nextFollowUpAt) || !Number.isFinite(Date.parse(body.nextFollowUpAt)) || new Date(body.nextFollowUpAt).toISOString().slice(0, 10) !== body.nextFollowUpAt)))) return NextResponse.json({ error: '跟进日期无效' }, { status: 400 });
-  const followUp = Object.fromEntries((['contactOutcome', 'currentWorkaround', 'trialInterest', 'nextFollowUpAt', 'paymentIntent', 'paymentEvidence', 'hoursLostPerMonth', 'currentSpendYuanPerMonth'] as const).filter(key => body[key] !== undefined).map(key => [key, body[key] === '' || body[key] === null ? undefined : body[key]]));
+  const followUp = Object.fromEntries((['contactOutcome', 'contactPersonRef', 'currentWorkaround', 'trialInterest', 'nextFollowUpAt', 'paymentIntent', 'paymentEvidence', 'hoursLostPerMonth', 'currentSpendYuanPerMonth'] as const).filter(key => body[key] !== undefined).map(key => [key, body[key] === '' || body[key] === null ? undefined : body[key]]));
   const row = updateEvidence(body.id, body.status, body.note, body.commentUrl, body.reviewVerdict, body.contactUrl, followUp);
   return row ? NextResponse.json(row) : NextResponse.json({ error: '线索不存在' }, { status: 404 });
 }

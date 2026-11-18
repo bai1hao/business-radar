@@ -25,6 +25,7 @@ export interface Evidence {
   verifiedAt?: string;
   contactedAt?: string;
   contactOutcome?: ContactOutcome;
+  contactPersonRef?: string;
   currentWorkaround?: string;
   trialInterest?: TrialInterest;
   paymentIntent?: PaymentIntent;
@@ -98,7 +99,7 @@ export function addEvidenceBatch(inputs: Array<Pick<Evidence, 'platform' | 'text
   return result;
 }
 
-export function updateEvidence(id: string, status: EvidenceStatus, note: string, commentUrl?: string, reviewVerdict?: ReviewVerdict | null, contactUrl?: string, followUp?: Partial<Pick<Evidence, 'contactOutcome' | 'currentWorkaround' | 'trialInterest' | 'nextFollowUpAt' | 'paymentIntent' | 'paymentEvidence' | 'hoursLostPerMonth' | 'currentSpendYuanPerMonth'>>): Evidence | null {
+export function updateEvidence(id: string, status: EvidenceStatus, note: string, commentUrl?: string, reviewVerdict?: ReviewVerdict | null, contactUrl?: string, followUp?: Partial<Pick<Evidence, 'contactOutcome' | 'contactPersonRef' | 'currentWorkaround' | 'trialInterest' | 'nextFollowUpAt' | 'paymentIntent' | 'paymentEvidence' | 'hoursLostPerMonth' | 'currentSpendYuanPerMonth'>>): Evidence | null {
   const rows = read();
   const row = rows.find(item => item.id === id);
   if (!row) return null;
