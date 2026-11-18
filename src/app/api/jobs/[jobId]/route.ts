@@ -5,6 +5,44 @@ import { NO_STORE_HEADERS } from '../../../../../lib/services/http-headers';
 import { listEvidence } from '../../../../../lib/services/evidence-store';
 import { isRecentDate } from '@/lib/evidence-freshness';
 
+type SourceRef = { url: string; directComment: boolean; createdAt?: string } | null;
+type LinkedResult = ClusterResult & { source_refs: SourceRef[] };
+
+function safeUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  try { return ['http:', 'https:'].includes(new URL(value).protocol) ? value : undefined; } catch { return undefined; }
+}
+
+function linkResults(results: ClusterResult[], job: { rawData?: { videos: RawVideoData[] }; clusteredData?: ClusteredDataGroup[] }): LinkedResult[] {
+  const evidenceByText = new Map<string, ReturnType<typeof listEvidence>>();
+  for (const row of listEvidence()) evidenceByText.set(row.text, [...(evidenceByText.get(row.text) || []), row]);
+  const videosByTitle = new Map<string, RawVideoData[]>();
+  for (const video of job.rawData?.videos || []) videosByTitle.set(video.title, [...(videosByTitle.get(video.title) || []), video]);
+  return results.map(result => {
+    const group = job.clusteredData?.find(group =>
+      group.videos.some(video => result.representative_texts.includes(video.title)) ||
+      group.comments.some(comment => result.representative_texts.includes(comment.comment_text))
+    );
+    const sourceType = result.source_type || (group?.videos.length ? 'video' : 'comment');
+    return {
+      ...result,
+      source_refs: result.representative_texts.map(text => {
+        if (sourceType === 'video') {
+          const matches = videosByTitle.get(text);
+          const url = matches?.length === 1 ? safeUrl(matches[0].video_url) : undefined;
+          return url ? { url, directComment: false, createdAt: matches?.[0].publish_time } : null;
+        }
+        const matches = evidenceByText.get(text);
+        if (matches?.length !== 1) return null;
+        const row = matches[0];
+        const commentUrl = safeUrl(row.commentUrl);
+        const url = commentUrl || safeUrl(row.sourceUrl);
+        return url ? { url, directComment: Boolean(commentUrl), createdAt: row.commentCreatedAt } : null;
+      })
+    };
+  });
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }
@@ -36,7 +74,7 @@ export async function GET(
       progress: string;
       keywords?: string[];
       crawlStats?: { videoCount?: number; commentCount?: number; textCount?: number };
-      results?: ClusterResult[];
+      results?: LinkedResult[];
       rawData?: {
         videos: RawVideoData[];
         comments: RawCommentData[];
@@ -67,7 +105,7 @@ export async function GET(
 
     // 如果任务完成，包含结果
     if (job.status === "completed" && job.results) {
-      response.results = job.results;
+      response.results = linkResults(job.results, job);
       // 包含原始数据
       if (job.rawData) {
         response.rawData = job.rawData;
