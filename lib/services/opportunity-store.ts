@@ -11,6 +11,7 @@ export interface Opportunity {
   decision?: OpportunityDecision;
   decisionReason?: string;
   decisionAt?: string;
+  decisionHistory?: Array<{ decision: OpportunityDecision; reason: string; at: string }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -49,6 +50,11 @@ export function updateOpportunity(id: string, changes: { title?: string; note?: 
   if (changes.title !== undefined) row.title = changes.title;
   if (changes.note !== undefined) row.note = changes.note;
   if (changes.decision !== undefined && changes.decision !== (row.decision || 'research')) {
+    row.decisionHistory = [...(row.decisionHistory || []), {
+      decision: row.decision || 'research',
+      reason: row.decisionReason || '',
+      at: row.decisionAt || row.createdAt
+    }];
     row.decision = changes.decision;
     row.decisionAt = new Date().toISOString();
     if (changes.decisionReason === undefined) row.decisionReason = '';
