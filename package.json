@@ -12,6 +12,7 @@
     "security:audit": "npm audit --audit-level=moderate",
     "python:check": "python -m compileall lib",
     "backup:data": "node scripts/backup-data.mjs",
+    "metrics:snapshot": "node scripts/record-experiment-snapshot.mjs",
     "backfill:comment-time": "node scripts/backfill-comment-time.mjs",
     "backfill:source-title": "node scripts/backfill-source-title.mjs",
     "backfill:source-keyword": "python scripts/backfill-source-keyword.py",

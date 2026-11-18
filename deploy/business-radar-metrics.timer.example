@@ -1,0 +1,11 @@
+[Unit]
+Description=Record Business Radar metrics daily
+
+[Timer]
+# 15:50 UTC = 23:50 China Standard Time.
+OnCalendar=*-*-* 15:50:00 UTC
+Persistent=true
+Unit=business-radar-metrics.service
+
+[Install]
+WantedBy=timers.target

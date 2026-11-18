@@ -1,0 +1,13 @@
+[Unit]
+Description=Record Business Radar experiment snapshot
+
+[Service]
+Type=oneshot
+User=business-radar
+WorkingDirectory=/opt/business-radar/app
+EnvironmentFile=/etc/business-radar.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node scripts/record-experiment-snapshot.mjs
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/business-radar

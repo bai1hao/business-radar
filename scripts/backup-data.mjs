@@ -11,7 +11,8 @@ const snapshot = path.join(backupRoot, `${new Date().toISOString().replace(/[:.]
 fs.mkdirSync(snapshot, { recursive: true });
 const files = [
   { source: path.join(evidenceRoot, 'evidence.json'), destination: 'evidence.json' },
-  { source: path.join(evidenceRoot, 'opportunities.json'), destination: 'opportunities.json' }
+  { source: path.join(evidenceRoot, 'opportunities.json'), destination: 'opportunities.json' },
+  { source: path.join(evidenceRoot, 'experiment-snapshots.json'), destination: 'experiment-snapshots.json' }
 ];
 function addJobs(directory, prefix = 'jobs') {
   if (!fs.existsSync(directory)) return;

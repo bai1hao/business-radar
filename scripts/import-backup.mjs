@@ -69,9 +69,31 @@ function collectJobs(directory, relative = '') {
   }
 }
 collectJobs(path.join(snapshot, 'jobs'));
-if (arrays.length === 0 && jobFilesSeen === 0) throw new Error('备份目录中没有证据、主题或任务 JSON 文件');
+const snapshotSource = path.join(snapshot, 'experiment-snapshots.json');
+const snapshotTarget = path.join(dataRoot, 'experiment-snapshots.json');
+let snapshotImport;
+if (fs.existsSync(snapshotSource)) {
+  const readSnapshots = file => {
+    const items = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!Array.isArray(items) || items.some(item => !item || typeof item.day !== 'string' || typeof item.experimentTag !== 'string')) throw new Error(`实验快照格式无效：${file}`);
+    return items;
+  };
+  if (fs.existsSync(snapshotTarget) && !merge) throw new Error(`目标文件已存在，使用 --merge 才能增量导入：${snapshotTarget}`);
+  const incoming = readSnapshots(snapshotSource);
+  const current = fs.existsSync(snapshotTarget) ? readSnapshots(snapshotTarget) : [];
+  const key = item => `${item.day}\u0000${item.experimentTag}`;
+  const currentByKey = new Map(current.map(item => [key(item), item]));
+  const added = incoming.filter(item => !currentByKey.has(key(item)));
+  for (const item of incoming) {
+    const existing = currentByKey.get(key(item));
+    if (existing && JSON.stringify(existing) !== JSON.stringify(item)) conflicts.push({ type: 'experiment-snapshot', id: `${item.day}/${item.experimentTag}`, fields: ['content'] });
+  }
+  snapshotImport = { target: snapshotTarget, rows: [...current, ...added], added: added.length };
+}
+if (arrays.length === 0 && jobFilesSeen === 0 && !snapshotImport) throw new Error('备份目录中没有证据、主题、实验快照或任务 JSON 文件');
 
 console.log(`导入预览：新增证据 ${arrays.find(item => item.target.endsWith('evidence.json'))?.added || 0} 条，主题 ${arrays.find(item => item.target.endsWith('opportunities.json'))?.added || 0} 个，任务 ${jobs.length} 个；同 ID 差异 ${conflicts.length} 处。`);
+if (snapshotImport) console.log(`实验快照：可新增 ${snapshotImport.added} 条；同日期与标签的现有记录优先。`);
 if (conflicts.length) {
   console.log('同 ID 差异（现有数据优先，以下字段不会被覆盖）：');
   for (const conflict of conflicts) console.log(`${conflict.type} ${conflict.id}: ${conflict.fields.join(', ')}`);
@@ -104,6 +126,13 @@ try {
     } finally {
       if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
     }
+  }
+  if (snapshotImport?.added) {
+    fs.mkdirSync(path.dirname(snapshotImport.target), { recursive: true });
+    const temporary = `${snapshotImport.target}.${randomUUID()}.tmp`;
+    fs.writeFileSync(temporary, JSON.stringify(snapshotImport.rows, null, 2));
+    try { fs.renameSync(temporary, snapshotImport.target); }
+    finally { if (fs.existsSync(temporary)) fs.unlinkSync(temporary); }
   }
 } catch (error) {
   for (const target of created) fs.unlinkSync(target);
