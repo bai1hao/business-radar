@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { isActionableEvidence, isPriorityEvidence, needSignals } from '@/lib/need-signals';
 import { isRecentDate } from '@/lib/evidence-freshness';
+import EvidenceImport from '@/components/EvidenceImport';
 
 type Row = { id: string; platform: string; text: string; sourceUrl: string; sourceTitle?: string; commentUrl?: string; contactUrl?: string; commentId?: string; authorLabel?: string; sourceKeyword?: string; sourceKeywords?: string[]; status: 'new' | 'verified' | 'contacted' | 'dismissed'; note: string; collectedAt: string; commentCreatedAt?: string; updatedAt?: string; verifiedAt?: string; contactedAt?: string; reviewVerdict?: 'need' | 'not-need' | 'unclear'; reviewedAt?: string; contactOutcome?: 'no-reply' | 'replied' | 'declined'; currentWorkaround?: string; trialInterest?: 'yes' | 'no' | 'unknown'; nextFollowUpAt?: string; paymentIntent?: 'yes' | 'no' | 'unknown'; paymentEvidence?: string; hoursLostPerMonth?: number; currentSpendYuanPerMonth?: number };
 
@@ -139,6 +140,7 @@ export default function EvidencePage() {
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       <button onClick={save} className="mt-4 rounded-lg bg-zinc-900 px-5 py-2.5 text-white">保存证据</button>
     </section>
+    <EvidenceImport onImported={refresh} />
     <section className="mt-8 space-y-4"><h2 className="text-lg font-semibold">已保存的线索 · {rows.length}</h2>
       <button type="button" onClick={() => { setFollowUpFilter(!followUpFilter); setSelectedEvidenceId(''); setPage(1); }} className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900">待跟进 {dueRows.length} 条{followUpFilter ? ' · 点击返回原筛选' : ' · 点击查看到期线索'}</button>
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">人工校准 · 近 90 天</h3><p className="mt-1 text-sm text-zinc-700">已判读 {reviewed.length} 条：疑似需求 {reviewed.filter(row => row.reviewVerdict === 'need').length}、非需求 {reviewed.filter(row => row.reviewVerdict === 'not-need').length}、不确定 {reviewed.filter(row => row.reviewVerdict === 'unclear').length}。规则未提示但人工判为需求 {reviewed.filter(row => row.reviewVerdict === 'need' && !isPriorityEvidence(row.text)).length} 条。</p></div><button type="button" onClick={() => { setStatusFilter('all'); setSignalFilter('review-queue'); setAgeFilter('90'); setKeywordFilter('all'); setQuery(''); setPage(1); }} className="rounded-lg bg-zinc-900 px-4 py-2 text-sm text-white">判读下一组 {reviewQueue.length} 条</button></div><p className="mt-2 text-xs text-zinc-600">队列包含规则提示和未提示的评论；判读只评价评论内容，核实原帖和联系进展仍用线索状态记录。新采集数据可能改变尚未判读的队列。</p></div>
