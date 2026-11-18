@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { isActionableEvidence, isPriorityEvidence, needSignals } from '@/lib/need-signals';
 import { isRecentDate } from '@/lib/evidence-freshness';
 
-type Row = { id: string; platform: string; text: string; sourceUrl: string; sourceTitle?: string; commentUrl?: string; contactUrl?: string; commentId?: string; authorLabel?: string; sourceKeyword?: string; sourceKeywords?: string[]; status: 'new' | 'verified' | 'contacted' | 'dismissed'; note: string; collectedAt: string; commentCreatedAt?: string; updatedAt?: string; verifiedAt?: string; contactedAt?: string; reviewVerdict?: 'need' | 'not-need' | 'unclear'; reviewedAt?: string };
+type Row = { id: string; platform: string; text: string; sourceUrl: string; sourceTitle?: string; commentUrl?: string; contactUrl?: string; commentId?: string; authorLabel?: string; sourceKeyword?: string; sourceKeywords?: string[]; status: 'new' | 'verified' | 'contacted' | 'dismissed'; note: string; collectedAt: string; commentCreatedAt?: string; updatedAt?: string; verifiedAt?: string; contactedAt?: string; reviewVerdict?: 'need' | 'not-need' | 'unclear'; reviewedAt?: string; contactOutcome?: 'no-reply' | 'replied' | 'declined'; currentWorkaround?: string; trialInterest?: 'yes' | 'no' | 'unknown'; nextFollowUpAt?: string };
 
 export default function EvidencePage() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -67,6 +67,11 @@ export default function EvidencePage() {
     if (!response.ok) { setError((await response.json()).error || '判读结果保存失败'); return; }
     setError(''); await refresh();
   }
+  async function saveFollowUp(row: Row, changes: Partial<Pick<Row, 'contactOutcome' | 'currentWorkaround' | 'trialInterest' | 'nextFollowUpAt'>>) {
+    const response = await fetch('/api/evidence', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: row.id, status: row.status, note: row.note, ...changes }) });
+    if (!response.ok) { setError((await response.json()).error || '跟进记录保存失败'); return; }
+    setError(''); await refresh();
+  }
 
   const recent = rows.filter(row => isRecentDate(row.commentCreatedAt));
   const reviewed = recent.filter(row => row.reviewVerdict);
@@ -90,14 +95,14 @@ export default function EvidencePage() {
     (!query.trim() || `${row.text} ${row.sourceTitle || ''} ${row.note} ${row.platform} ${row.sourceKeywords?.join(' ') || row.sourceKeyword || ''}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())))
   );
   function exportFiltered() {
-    const headers = ['平台', '来源搜索词', '原帖标题', '评论原文', '需求信号', '状态', '需求判读', '判读时间', '原帖链接', '评论分享链接', '联系入口', '评论ID', '备注', '评论发布时间', '采集时间', '核实时间', '联系时间', '最后修改时间'];
+    const headers = ['平台', '来源搜索词', '原帖标题', '评论原文', '需求信号', '状态', '需求判读', '判读时间', '原帖链接', '评论分享链接', '联系入口', '评论ID', '备注', '评论发布时间', '采集时间', '核实时间', '联系时间', '联系结果', '现有解决办法', '试用意愿', '下次跟进日期', '最后修改时间'];
     const statusNames = { new: '待核实', verified: '已核实', contacted: '已联系', dismissed: '忽略' };
     const safeCell = (value: string) => {
       const protectedValue = /^[\s]*[=+\-@]/.test(value) ? `'${value}` : value;
       return `"${protectedValue.replace(/"/g, '""')}"`;
     };
     const verdictNames = { need: '疑似真实需求', 'not-need': '非需求', unclear: '不确定' };
-    const lines = [headers, ...filtered.map(row => [row.platform, row.sourceKeywords?.join('、') || row.sourceKeyword || '', row.sourceTitle || '', row.text, needSignals(row.text).join('、'), statusNames[row.status], row.reviewVerdict ? verdictNames[row.reviewVerdict] : '', row.reviewedAt || '', row.sourceUrl, row.commentUrl || '', row.contactUrl || '', row.commentId || '', row.note, row.commentCreatedAt || '', row.collectedAt, row.verifiedAt || '', row.contactedAt || '', row.updatedAt || ''])];
+    const lines = [headers, ...filtered.map(row => [row.platform, row.sourceKeywords?.join('、') || row.sourceKeyword || '', row.sourceTitle || '', row.text, needSignals(row.text).join('、'), statusNames[row.status], row.reviewVerdict ? verdictNames[row.reviewVerdict] : '', row.reviewedAt || '', row.sourceUrl, row.commentUrl || '', row.contactUrl || '', row.commentId || '', row.note, row.commentCreatedAt || '', row.collectedAt, row.verifiedAt || '', row.contactedAt || '', row.contactOutcome || '', row.currentWorkaround || '', row.trialInterest || '', row.nextFollowUpAt || '', row.updatedAt || ''])];
     const csv = '\uFEFF' + lines.map(line => line.map(safeCell).join(',')).join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
@@ -155,6 +160,12 @@ export default function EvidencePage() {
         <input aria-label="评论分享链接" key={`${row.id}:${row.commentUrl || ''}`} defaultValue={row.commentUrl || ''} onBlur={e => { if (e.target.value !== (row.commentUrl || '')) void saveCommentUrl(row, e.target.value.trim()); }} placeholder="可选：粘贴在抖音核实过的评论分享链接，离开输入框时保存" className="mt-4 w-full rounded-lg border border-zinc-300 p-3 text-sm" />
         <div className="mt-3 flex flex-wrap items-center gap-4"><button type="button" onClick={() => void navigator.clipboard.writeText(row.text).catch(() => setError('复制失败，请手动选中评论原文'))} className="text-xs text-amber-700 underline">复制评论原文</button>{row.contactUrl && <a href={row.contactUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-amber-700 underline">打开联系入口</a>}</div>
         <input aria-label="联系入口" key={`${row.id}:${row.contactUrl || ''}`} defaultValue={row.contactUrl || ''} onBlur={e => { if (e.target.value !== (row.contactUrl || '')) void saveContactUrl(row, e.target.value.trim()); }} placeholder="可选：人工确认后粘贴作者主页或其他联系入口，离开输入框时保存" className="mt-3 w-full rounded-lg border border-zinc-300 p-3 text-sm" />
+        <div className="mt-4 grid gap-3 rounded-xl bg-zinc-50 p-4 sm:grid-cols-3">
+          <label className="text-sm">联系结果<select aria-label="联系结果" value={row.contactOutcome || ''} onChange={e => void saveFollowUp(row, { contactOutcome: e.target.value as Row['contactOutcome'] })} className="mt-1 w-full rounded-lg border border-zinc-300 bg-white p-2"><option value="">尚未记录</option><option value="no-reply">暂无回复</option><option value="replied">已回复</option><option value="declined">明确拒绝</option></select></label>
+          <label className="text-sm">试用意愿<select aria-label="试用意愿" value={row.trialInterest || ''} onChange={e => void saveFollowUp(row, { trialInterest: e.target.value as Row['trialInterest'] })} className="mt-1 w-full rounded-lg border border-zinc-300 bg-white p-2"><option value="">尚未询问</option><option value="yes">愿意试用</option><option value="no">不愿试用</option><option value="unknown">仍不确定</option></select></label>
+          <label className="text-sm">下次跟进日期<input aria-label="下次跟进日期" type="date" key={`${row.id}:${row.nextFollowUpAt || ''}`} defaultValue={row.nextFollowUpAt || ''} onBlur={e => { if (e.target.value !== (row.nextFollowUpAt || '')) void saveFollowUp(row, { nextFollowUpAt: e.target.value }); }} className="mt-1 w-full rounded-lg border border-zinc-300 bg-white p-2" /></label>
+          <label className="text-sm sm:col-span-3">对方现在如何解决<input aria-label="现有解决办法" key={`${row.id}:${row.currentWorkaround || ''}`} defaultValue={row.currentWorkaround || ''} onBlur={e => { if (e.target.value !== (row.currentWorkaround || '')) void saveFollowUp(row, { currentWorkaround: e.target.value.trim() }); }} placeholder="只记录对方明确说过的办法；不知道就留空" className="mt-1 w-full rounded-lg border border-zinc-300 bg-white p-2" /></label>
+        </div>
         <textarea aria-label="线索备注" defaultValue={row.note} onBlur={e => { if (e.target.value !== row.note) void update(row, row.status, e.target.value); }} placeholder="备注：需求背景、联系进展…" className="mt-4 w-full rounded-lg border border-zinc-300 p-3 text-sm" />
       </article>)}
       {filtered.length === 0 && <p className="rounded-2xl border border-dashed border-zinc-300 p-10 text-center text-zinc-500">没有匹配的线索。换个关键词或状态试试。</p>}

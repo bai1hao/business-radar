@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { addEvidence, listEvidence, updateEvidence, EvidenceStatus, ReviewVerdict } from '../../../../lib/services/evidence-store';
+import { addEvidence, listEvidence, updateEvidence, EvidenceStatus, ReviewVerdict, ContactOutcome, TrialInterest } from '../../../../lib/services/evidence-store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const statuses: EvidenceStatus[] = ['new', 'verified', 'contacted', 'dismissed'];
 const verdicts: ReviewVerdict[] = ['need', 'not-need', 'unclear'];
+const contactOutcomes: ContactOutcome[] = ['no-reply', 'replied', 'declined'];
+const trialInterests: TrialInterest[] = ['yes', 'no', 'unknown'];
 
 function validWebUrl(value: string): boolean {
   try { return ['http:', 'https:'].includes(new URL(value).protocol); } catch { return false; }
@@ -53,6 +55,11 @@ export async function PATCH(request: NextRequest) {
   if (body.reviewVerdict !== undefined && body.reviewVerdict !== null && !verdicts.includes(body.reviewVerdict)) {
     return NextResponse.json({ error: '需求判读结果无效' }, { status: 400 });
   }
-  const row = updateEvidence(body.id, body.status, body.note, body.commentUrl, body.reviewVerdict, body.contactUrl);
+  if (body.contactOutcome !== undefined && body.contactOutcome !== '' && !contactOutcomes.includes(body.contactOutcome)) return NextResponse.json({ error: '联系结果无效' }, { status: 400 });
+  if (body.trialInterest !== undefined && body.trialInterest !== '' && !trialInterests.includes(body.trialInterest)) return NextResponse.json({ error: '试用意愿无效' }, { status: 400 });
+  if (body.currentWorkaround !== undefined && (typeof body.currentWorkaround !== 'string' || body.currentWorkaround.length > 2000)) return NextResponse.json({ error: '现有解决办法不能超过 2000 字' }, { status: 400 });
+  if (body.nextFollowUpAt !== undefined && (typeof body.nextFollowUpAt !== 'string' || (body.nextFollowUpAt && (!/^\d{4}-\d{2}-\d{2}$/.test(body.nextFollowUpAt) || !Number.isFinite(Date.parse(body.nextFollowUpAt)) || new Date(body.nextFollowUpAt).toISOString().slice(0, 10) !== body.nextFollowUpAt)))) return NextResponse.json({ error: '跟进日期无效' }, { status: 400 });
+  const followUp = Object.fromEntries((['contactOutcome', 'currentWorkaround', 'trialInterest', 'nextFollowUpAt'] as const).filter(key => body[key] !== undefined).map(key => [key, body[key] || undefined]));
+  const row = updateEvidence(body.id, body.status, body.note, body.commentUrl, body.reviewVerdict, body.contactUrl, followUp);
   return row ? NextResponse.json(row) : NextResponse.json({ error: '线索不存在' }, { status: 404 });
 }
