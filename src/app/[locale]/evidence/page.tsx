@@ -15,6 +15,7 @@ export default function EvidencePage() {
   const [signalFilter, setSignalFilter] = useState('priority');
   const [ageFilter, setAgeFilter] = useState('90');
   const [keywordFilter, setKeywordFilter] = useState('all');
+  const [selectedEvidenceId, setSelectedEvidenceId] = useState('');
   const [page, setPage] = useState(1);
   const refresh = async () => {
     const response = await fetch('/api/evidence', { cache: 'no-store' });
@@ -22,7 +23,15 @@ export default function EvidencePage() {
     setRows(await response.json());
   };
   useEffect(() => {
-    const keyword = new URLSearchParams(window.location.search).get('keyword');
+    const params = new URLSearchParams(window.location.search);
+    const evidenceId = params.get('id');
+    if (evidenceId) {
+      setSelectedEvidenceId(evidenceId);
+      setStatusFilter('all');
+      setSignalFilter('all');
+      setAgeFilter('all');
+    }
+    const keyword = params.get('keyword');
     if (keyword) {
       setKeywordFilter(keyword);
       setStatusFilter('all');
@@ -68,7 +77,7 @@ export default function EvidencePage() {
   ].slice(0, 30);
   const reviewIds = new Set(reviewQueue.map(row => row.id));
 
-  const filtered = rows.filter(row =>
+  const filtered = rows.filter(row => selectedEvidenceId ? row.id === selectedEvidenceId : (
     (statusFilter === 'all' || row.status === statusFilter) &&
     (keywordFilter === 'all' || (keywordFilter === 'unknown' ? !row.sourceKeyword && !row.sourceKeywords?.length : row.sourceKeyword === keywordFilter || row.sourceKeywords?.includes(keywordFilter))) &&
     (ageFilter === 'all' || (ageFilter === 'unknown' ? !row.commentCreatedAt : isRecentDate(row.commentCreatedAt, Number(ageFilter)))) &&
@@ -78,7 +87,7 @@ export default function EvidencePage() {
       (signalFilter === 'missing-link' && isActionableEvidence(row.text, row.reviewVerdict) && !row.commentUrl) ||
       (signalFilter === 'verified-missing-link' && row.status === 'verified' && !row.commentUrl) ||
       (signalFilter === 'review-queue' && reviewIds.has(row.id))) &&
-    (!query.trim() || `${row.text} ${row.sourceTitle || ''} ${row.note} ${row.platform} ${row.sourceKeywords?.join(' ') || row.sourceKeyword || ''}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
+    (!query.trim() || `${row.text} ${row.sourceTitle || ''} ${row.note} ${row.platform} ${row.sourceKeywords?.join(' ') || row.sourceKeyword || ''}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())))
   );
   function exportFiltered() {
     const headers = ['平台', '来源搜索词', '原帖标题', '评论原文', '需求信号', '状态', '需求判读', '判读时间', '原帖链接', '评论分享链接', '联系入口', '评论ID', '备注', '评论发布时间', '采集时间', '核实时间', '联系时间', '最后修改时间'];
@@ -132,6 +141,7 @@ export default function EvidencePage() {
         <select aria-label="筛选评论发布时间" value={ageFilter} onChange={e => { setAgeFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="30">近 30 天</option><option value="90">近 90 天</option><option value="180">近 180 天</option><option value="365">近 365 天</option><option value="all">全部时间</option><option value="unknown">发布时间未知</option></select>
         <select aria-label="筛选来源搜索词" value={keywordFilter} onChange={e => { setKeywordFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="all">全部搜索词</option>{[...new Set(rows.flatMap(row => row.sourceKeywords?.length ? row.sourceKeywords : row.sourceKeyword ? [row.sourceKeyword] : []))].sort().map(value => <option key={value} value={value}>{value}</option>)}<option value="unknown">来源搜索词未知</option></select>
       </div>
+      {selectedEvidenceId && <div className="flex items-center gap-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900"><span>{filtered.length ? '正在查看分析结果对应的评论' : '未找到对应评论，可能已被删除'}</span><button type="button" className="underline" onClick={() => { setSelectedEvidenceId(''); window.history.replaceState(null, '', window.location.pathname); }}>返回全部证据</button></div>}
       <p className="text-sm text-zinc-500">找到 {filtered.length} 条 · 第 {Math.min(page, pageCount)} / {pageCount} 页。先打开来源核对评论，再标记核实状态；原帖链接不一定能直达评论。</p>
       {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <button type="button" disabled={filtered.length === 0} onClick={exportFiltered} className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm disabled:opacity-40">导出当前筛选结果 CSV</button>

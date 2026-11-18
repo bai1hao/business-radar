@@ -5,7 +5,7 @@ import { NO_STORE_HEADERS } from '../../../../../lib/services/http-headers';
 import { listEvidence } from '../../../../../lib/services/evidence-store';
 import { isRecentDate } from '@/lib/evidence-freshness';
 
-type SourceRef = { url: string; directComment: boolean; createdAt?: string } | null;
+type SourceRef = { url: string; directComment: boolean; createdAt?: string; evidenceId?: string } | null;
 type LinkedResult = ClusterResult & { source_refs: SourceRef[] };
 
 function safeUrl(value: string | undefined): string | undefined {
@@ -37,7 +37,7 @@ function linkResults(results: ClusterResult[], job: { rawData?: { videos: RawVid
         const row = matches[0];
         const commentUrl = safeUrl(row.commentUrl);
         const url = commentUrl || safeUrl(row.sourceUrl);
-        return url ? { url, directComment: Boolean(commentUrl), createdAt: row.commentCreatedAt } : null;
+        return url ? { url, directComment: Boolean(commentUrl), createdAt: row.commentCreatedAt, evidenceId: row.id } : null;
       })
     };
   });
