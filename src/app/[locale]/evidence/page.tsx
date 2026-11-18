@@ -13,6 +13,7 @@ export default function EvidencePage() {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('new');
   const [signalFilter, setSignalFilter] = useState('priority');
+  const [followUpFilter, setFollowUpFilter] = useState(false);
   const [ageFilter, setAgeFilter] = useState('90');
   const [keywordFilter, setKeywordFilter] = useState('all');
   const [selectedEvidenceId, setSelectedEvidenceId] = useState('');
@@ -24,6 +25,7 @@ export default function EvidencePage() {
   };
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get('followUp') === 'due') { setFollowUpFilter(true); setStatusFilter('all'); setSignalFilter('all'); setAgeFilter('all'); }
     const evidenceId = params.get('id');
     if (evidenceId) {
       setSelectedEvidenceId(evidenceId);
@@ -81,8 +83,13 @@ export default function EvidencePage() {
     ...pendingReview.filter(row => !isPriorityEvidence(row.text)).sort((a, b) => a.id.localeCompare(b.id))
   ].slice(0, 30);
   const reviewIds = new Set(reviewQueue.map(row => row.id));
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const dueRows = rows.filter(row => row.status !== 'dismissed' && row.nextFollowUpAt && row.nextFollowUpAt <= today);
 
   const filtered = rows.filter(row => selectedEvidenceId ? row.id === selectedEvidenceId : (
+    (followUpFilter ? row.status !== 'dismissed' && Boolean(row.nextFollowUpAt && row.nextFollowUpAt <= today) : true) &&
+    (followUpFilter ||
     (statusFilter === 'all' || row.status === statusFilter) &&
     (keywordFilter === 'all' || (keywordFilter === 'unknown' ? !row.sourceKeyword && !row.sourceKeywords?.length : row.sourceKeyword === keywordFilter || row.sourceKeywords?.includes(keywordFilter))) &&
     (ageFilter === 'all' || (ageFilter === 'unknown' ? !row.commentCreatedAt : isRecentDate(row.commentCreatedAt, Number(ageFilter)))) &&
@@ -91,9 +98,9 @@ export default function EvidencePage() {
       (signalFilter === 'signals' && needSignals(row.text).length > 0) ||
       (signalFilter === 'missing-link' && isActionableEvidence(row.text, row.reviewVerdict) && !row.commentUrl) ||
       (signalFilter === 'verified-missing-link' && row.status === 'verified' && !row.commentUrl) ||
-      (signalFilter === 'review-queue' && reviewIds.has(row.id))) &&
+      (signalFilter === 'review-queue' && reviewIds.has(row.id)))) &&
     (!query.trim() || `${row.text} ${row.sourceTitle || ''} ${row.note} ${row.platform} ${row.sourceKeywords?.join(' ') || row.sourceKeyword || ''}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())))
-  );
+  ).sort((a, b) => followUpFilter ? (a.nextFollowUpAt || '').localeCompare(b.nextFollowUpAt || '') : 0);
   function exportFiltered() {
     const headers = ['平台', '来源搜索词', '原帖标题', '评论原文', '需求信号', '状态', '需求判读', '判读时间', '原帖链接', '评论分享链接', '联系入口', '评论ID', '备注', '评论发布时间', '采集时间', '核实时间', '联系时间', '联系结果', '现有解决办法', '试用意愿', '下次跟进日期', '最后修改时间'];
     const statusNames = { new: '待核实', verified: '已核实', contacted: '已联系', dismissed: '忽略' };
@@ -133,6 +140,7 @@ export default function EvidencePage() {
       <button onClick={save} className="mt-4 rounded-lg bg-zinc-900 px-5 py-2.5 text-white">保存证据</button>
     </section>
     <section className="mt-8 space-y-4"><h2 className="text-lg font-semibold">已保存的线索 · {rows.length}</h2>
+      <button type="button" onClick={() => { setFollowUpFilter(!followUpFilter); setSelectedEvidenceId(''); setPage(1); }} className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900">待跟进 {dueRows.length} 条{followUpFilter ? ' · 点击返回原筛选' : ' · 点击查看到期线索'}</button>
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">人工校准 · 近 90 天</h3><p className="mt-1 text-sm text-zinc-700">已判读 {reviewed.length} 条：疑似需求 {reviewed.filter(row => row.reviewVerdict === 'need').length}、非需求 {reviewed.filter(row => row.reviewVerdict === 'not-need').length}、不确定 {reviewed.filter(row => row.reviewVerdict === 'unclear').length}。规则未提示但人工判为需求 {reviewed.filter(row => row.reviewVerdict === 'need' && !isPriorityEvidence(row.text)).length} 条。</p></div><button type="button" onClick={() => { setStatusFilter('all'); setSignalFilter('review-queue'); setAgeFilter('90'); setKeywordFilter('all'); setQuery(''); setPage(1); }} className="rounded-lg bg-zinc-900 px-4 py-2 text-sm text-white">判读下一组 {reviewQueue.length} 条</button></div><p className="mt-2 text-xs text-zinc-600">队列包含规则提示和未提示的评论；判读只评价评论内容，核实原帖和联系进展仍用线索状态记录。新采集数据可能改变尚未判读的队列。</p></div>
       <div className="grid gap-3 sm:grid-cols-3">{([
         { label: '待核实', count: rows.filter(row => row.status === 'new' && isRecentDate(row.commentCreatedAt) && isActionableEvidence(row.text, row.reviewVerdict)).length, filter: 'new' },

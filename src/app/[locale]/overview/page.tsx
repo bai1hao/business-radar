@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { isActionableEvidence, needSignals } from '@/lib/need-signals';
 import { isRecentDate } from '@/lib/evidence-freshness';
 
-type Evidence = { id: string; text: string; status: 'new' | 'verified' | 'contacted' | 'dismissed'; reviewVerdict?: 'need' | 'not-need' | 'unclear'; sourceUrl: string; commentUrl?: string; commentCreatedAt?: string; collectedAt: string };
+type Evidence = { id: string; text: string; status: 'new' | 'verified' | 'contacted' | 'dismissed'; reviewVerdict?: 'need' | 'not-need' | 'unclear'; sourceUrl: string; commentUrl?: string; commentCreatedAt?: string; collectedAt: string; nextFollowUpAt?: string };
 type Job = { jobId: string; status: string; progress: string; keywords: string[]; startTime: number };
 
 export default function OverviewPage() {
@@ -21,11 +21,13 @@ export default function OverviewPage() {
   }, []);
   const recent = evidence.filter(row => isRecentDate(row.commentCreatedAt));
   const signals = recent.filter(row => (row.status === 'new' || row.status === 'verified') && isActionableEvidence(row.text, row.reviewVerdict));
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const cards = [
     { label: '全部证据', value: evidence.length, detail: '已保存的原始评论', href: '/evidence' },
     { label: '近 90 天证据', value: recent.length, detail: '按评论发布时间计算', href: '/evidence' },
     { label: '近期优先线索', value: signals.length, detail: '规则提示与人工判读，仍需核实', href: '/evidence' },
-    { label: '已联系', value: evidence.filter(row => row.status === 'contacted').length, detail: '已记录联系进展', href: '/evidence' }
+    { label: '待跟进', value: evidence.filter(row => row.status !== 'dismissed' && row.nextFollowUpAt && row.nextFollowUpAt <= today).length, detail: '今天或更早到期', href: '/evidence?followUp=due' }
   ];
   return <main className="mx-auto max-w-6xl px-5 py-10">
     <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm font-semibold text-amber-700">Business Radar</p><h1 className="mt-2 text-3xl font-semibold">需求总览</h1><p className="mt-2 text-sm text-zinc-600">从原始评论出发，逐条核实真实需求。</p></div><div className="flex gap-3"><Link href="/capture" className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm">采集任务</Link><Link href="/opportunities" className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm">需求主题</Link><Link href="/evidence" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm text-white">查看证据库</Link></div></div>
