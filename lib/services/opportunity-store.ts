@@ -10,6 +10,8 @@ export interface Opportunity {
   evidenceIds: string[];
   decision?: OpportunityDecision;
   decisionReason?: string;
+  counterEvidence?: string;
+  openQuestions?: string;
   decisionAt?: string;
   decisionHistory?: Array<{ decision: OpportunityDecision; reason: string; at: string }>;
   createdAt: string;
@@ -43,7 +45,7 @@ export function createOpportunity(title: string): Opportunity {
   return row;
 }
 
-export function updateOpportunity(id: string, changes: { title?: string; note?: string; decision?: OpportunityDecision; decisionReason?: string; addEvidenceId?: string; removeEvidenceId?: string }): Opportunity | null {
+export function updateOpportunity(id: string, changes: { title?: string; note?: string; decision?: OpportunityDecision; decisionReason?: string; counterEvidence?: string; openQuestions?: string; addEvidenceId?: string; removeEvidenceId?: string }): Opportunity | null {
   const rows = read();
   const row = rows.find(item => item.id === id);
   if (!row) return null;
@@ -60,6 +62,8 @@ export function updateOpportunity(id: string, changes: { title?: string; note?: 
     if (changes.decisionReason === undefined) row.decisionReason = '';
   }
   if (changes.decisionReason !== undefined) row.decisionReason = changes.decisionReason;
+  if (changes.counterEvidence !== undefined) row.counterEvidence = changes.counterEvidence;
+  if (changes.openQuestions !== undefined) row.openQuestions = changes.openQuestions;
   if (changes.addEvidenceId && !row.evidenceIds.includes(changes.addEvidenceId)) row.evidenceIds.push(changes.addEvidenceId);
   if (changes.removeEvidenceId) row.evidenceIds = row.evidenceIds.filter(evidenceId => evidenceId !== changes.removeEvidenceId);
   row.updatedAt = new Date().toISOString();

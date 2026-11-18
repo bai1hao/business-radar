@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const body = await request.json().catch(() => null);
   if (!body || typeof body.id !== 'string') return NextResponse.json({ error: '无效主题' }, { status: 400 });
-  const changes: { title?: string; note?: string; decision?: OpportunityDecision; decisionReason?: string; addEvidenceId?: string; removeEvidenceId?: string } = {};
+  const changes: { title?: string; note?: string; decision?: OpportunityDecision; decisionReason?: string; counterEvidence?: string; openQuestions?: string; addEvidenceId?: string; removeEvidenceId?: string } = {};
   if (body.title !== undefined) {
     if (typeof body.title !== 'string' || !body.title.trim() || body.title.length > 120) return NextResponse.json({ error: '主题名称无效' }, { status: 400 });
     changes.title = body.title.trim();
@@ -37,6 +37,12 @@ export async function PATCH(request: NextRequest) {
   if (body.decisionReason !== undefined) {
     if (typeof body.decisionReason !== 'string' || body.decisionReason.length > 2000) return NextResponse.json({ error: '判断理由不能超过 2000 字' }, { status: 400 });
     changes.decisionReason = body.decisionReason;
+  }
+  for (const key of ['counterEvidence', 'openQuestions'] as const) {
+    if (body[key] !== undefined) {
+      if (typeof body[key] !== 'string' || body[key].length > 2000) return NextResponse.json({ error: '反例或待验证问题不能超过 2000 字' }, { status: 400 });
+      changes[key] = body[key];
+    }
   }
   if (body.addEvidenceId !== undefined) {
     if (typeof body.addEvidenceId !== 'string' || !listEvidence().some(row => row.id === body.addEvidenceId)) return NextResponse.json({ error: '证据不存在' }, { status: 400 });

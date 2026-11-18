@@ -6,6 +6,7 @@ export type EvidenceStatus = 'new' | 'verified' | 'contacted' | 'dismissed';
 export type ReviewVerdict = 'need' | 'not-need' | 'unclear';
 export type ContactOutcome = 'no-reply' | 'replied' | 'declined';
 export type TrialInterest = 'yes' | 'no' | 'unknown';
+export type PaymentIntent = 'yes' | 'no' | 'unknown';
 export interface Evidence {
   id: string;
   platform: string;
@@ -26,6 +27,10 @@ export interface Evidence {
   contactOutcome?: ContactOutcome;
   currentWorkaround?: string;
   trialInterest?: TrialInterest;
+  paymentIntent?: PaymentIntent;
+  paymentEvidence?: string;
+  hoursLostPerMonth?: number;
+  currentSpendYuanPerMonth?: number;
   nextFollowUpAt?: string;
   reviewVerdict?: ReviewVerdict;
   reviewedAt?: string;
@@ -93,7 +98,7 @@ export function addEvidenceBatch(inputs: Array<Pick<Evidence, 'platform' | 'text
   return result;
 }
 
-export function updateEvidence(id: string, status: EvidenceStatus, note: string, commentUrl?: string, reviewVerdict?: ReviewVerdict | null, contactUrl?: string, followUp?: Partial<Pick<Evidence, 'contactOutcome' | 'currentWorkaround' | 'trialInterest' | 'nextFollowUpAt'>>): Evidence | null {
+export function updateEvidence(id: string, status: EvidenceStatus, note: string, commentUrl?: string, reviewVerdict?: ReviewVerdict | null, contactUrl?: string, followUp?: Partial<Pick<Evidence, 'contactOutcome' | 'currentWorkaround' | 'trialInterest' | 'nextFollowUpAt' | 'paymentIntent' | 'paymentEvidence' | 'hoursLostPerMonth' | 'currentSpendYuanPerMonth'>>): Evidence | null {
   const rows = read();
   const row = rows.find(item => item.id === id);
   if (!row) return null;
