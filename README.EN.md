@@ -13,7 +13,7 @@ Business Radar is a public fork of [DeepPoint](https://github.com/weiyf2/deeppoi
 | Evidence | Saves collected comments before AI analysis, with original text, post URL, comment ID, publication time, and search keyword. Evidence remains available while the model is offline. |
 | Validation | Recent-lead filters, manual review, source verification, contact status, follow-ups, and explicit payment evidence. Rule-based signals are only a first pass. |
 | Opportunities | Groups evidence into demand themes and records decisions, counterexamples, and questions for the next interview or experiment. |
-| Flexible analysis | Capture now, analyze later; persisted jobs can be retried. Choose LM Studio, Ollama, or a cloud API per run. A local Agent can also read exported files and write a checked JSON result; this workflow currently uses the command line. |
+| Flexible analysis | Capture now, analyze later; persisted jobs can be retried. Choose LM Studio, Ollama, or a cloud API per run. A local Agent can also read exported files and write a checked JSON result, displayed on the job detail page; file handoff uses the command line. |
 | Measurement | Quality dashboard for source/date/link coverage, keyword yield, and daily experiment snapshots. Replies, trials, and payment statements require manual recording. |
 | Deployment | Debian 12 single-server examples, including a web-only mode. Automatic home-PC-to-server synchronization is not yet implemented. |
 

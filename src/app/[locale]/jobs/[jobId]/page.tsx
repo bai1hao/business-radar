@@ -6,6 +6,7 @@ import Link from 'next/link';
 
 type Result = { id: string; size: number; source_type?: 'video' | 'comment'; representative_texts: string[]; source_refs?: Array<{ url: string; directComment: boolean; createdAt?: string; evidenceId?: string } | null>; analysis: { one_line_pain: string; rationale: string; potential_product: string; paid_interest: string } };
 type Job = { jobId: string; status: string; progress: string; keywords?: string[]; aiProvider?: string; crawlStats?: { videoCount?: number; commentCount?: number; textCount?: number }; sourceDateSummary?: { totalComments: number; datedComments: number; recent90: number; newestCommentAt?: string }; clusteredData?: Array<{ videos: Array<{ title: string }>; comments: Array<{ comment_text: string }> }>; results?: Result[]; error?: string };
+type AgentFinding = { title: string; agentAlternative: string; customerAdoptionBarrier: string; paymentEvidence: string; confidence: string; nextStep: string; evidence: Array<{ ref: string; text: string; sourceUrl?: string; commentCreatedAt?: string }> };
 
 function resultSource(result: Result, job: Job): 'video' | 'comment' | undefined {
   if (result.source_type) return result.source_type;
@@ -18,6 +19,7 @@ export default function JobDetailPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState('');
+  const [agentFindings, setAgentFindings] = useState<AgentFinding[] | null>(null);
   useEffect(() => {
     if (!jobId) return;
     const refresh = async () => {
@@ -28,6 +30,8 @@ export default function JobDetailPage() {
       } else {
         setError(response.status === 404 ? '任务不存在' : '加载任务失败，请稍后重试');
       }
+      const agentResponse = await fetch(`/api/agent-results/${encodeURIComponent(jobId)}`, { cache: 'no-store' });
+      setAgentFindings(agentResponse.ok ? (await agentResponse.json()).findings : null);
     };
     void refresh();
     const timer = setInterval(() => void refresh(), 5000);
@@ -49,6 +53,8 @@ export default function JobDetailPage() {
         <Link href="/evidence" className="mt-4 inline-block text-sm text-amber-700 underline">查看已保存的原始证据</Link>
       </section>
       {job.status === 'captured' && <p className="mt-6 text-sm text-zinc-600">采集数据已保存。请在任务记录页启动 AI 分析。</p>}
+      {job.status === 'captured' && <p className="mt-2 text-sm text-zinc-600">也可以在项目目录运行 <code>npm run agent:prepare -- {jobId}</code>，让本地 Agent 阅读生成的指导文件并写入结果。页面会自动显示校验通过的结果。</p>}
+      {agentFindings && <section className="mt-8 space-y-4"><h2 className="text-xl font-semibold">本地 Agent 分析 · {agentFindings.length}</h2><p className="text-sm text-zinc-600">这是 Agent 对采集文件的判断，请打开来源核实；未列出的评论不代表没有需求。</p>{agentFindings.map((finding, index) => <article key={`${index}:${finding.title}`} className="rounded-2xl border border-zinc-200 bg-white p-6"><h3 className="text-lg font-semibold">{finding.title}</h3><p className="mt-2 text-sm">现成 Agent 方案：{finding.agentAlternative}</p><p className="mt-2 text-sm">客户自行采用的障碍：{finding.customerAdoptionBarrier}</p><p className="mt-2 text-sm">付费证据：{finding.paymentEvidence}</p><p className="mt-2 text-sm">下一步：{finding.nextStep}</p><p className="mt-2 text-xs text-zinc-500">信心：{finding.confidence}</p><div className="mt-4 space-y-3">{finding.evidence.map(source => <div key={source.ref} className="rounded-lg bg-zinc-50 p-3 text-sm"><p>{source.text}</p><div className="mt-1 flex gap-3 text-xs text-zinc-500">{source.commentCreatedAt && <span>发布于 {new Date(source.commentCreatedAt).toLocaleDateString()}</span>}{source.sourceUrl && <a href={source.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-amber-700 underline">打开原帖</a>}</div></div>)}</div></article>)}</section>}
       {job.status === 'completed' && <section className="mt-8 space-y-4"><h2 className="text-xl font-semibold">分析结果 · {job.results?.length || 0}</h2>
         {job.results?.map(result => <article key={result.id} className="rounded-2xl border border-zinc-200 bg-white p-6">
           {resultSource(result, job) && <p className="mb-3 text-xs font-medium text-zinc-600">{resultSource(result, job) === 'video' ? '来源：视频标题 · 仅是话题线索，不能直接证明有人需要购买' : '来源：用户评论 · 请核对原文与发布时间'}</p>}

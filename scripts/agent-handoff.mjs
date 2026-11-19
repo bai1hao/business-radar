@@ -16,16 +16,20 @@ const guidePath = path.join(workspace, 'AGENT_GUIDE.md');
 if (!fs.existsSync(jobPath)) fail(`找不到采集任务：${jobId}`);
 const job = JSON.parse(fs.readFileSync(jobPath, 'utf8'));
 if (job.jobId !== jobId || !job.rawData) fail('任务没有可用的采集数据');
+const evidenceRoot = process.env.BUSINESS_RADAR_DATA_DIR || path.join(process.cwd(), '.business-radar');
+const evidencePath = path.join(evidenceRoot, 'evidence.json');
+const evidenceRows = fs.existsSync(evidencePath) ? JSON.parse(fs.readFileSync(evidencePath, 'utf8')) : [];
+const evidenceByComment = new Map(evidenceRows.filter(row => row.commentId).map(row => [`${row.platform}:${row.commentId}`, row]));
 
 const comments = (job.rawData.comments || []).map((row, index) => ({
   ref: `comment:${index + 1}`,
   text: row.comment_text,
   platform: row.platform || job.dataSource,
   commentId: row.comment_id || null,
-  sourceUrl: row.video_url || null,
-  commentCreatedAt: row.comment_time || null,
+  sourceUrl: evidenceByComment.get(`${row.platform || job.dataSource}:${row.comment_id}`)?.commentUrl || row.video_url || null,
+  commentCreatedAt: evidenceByComment.get(`${row.platform || job.dataSource}:${row.comment_id}`)?.commentCreatedAt || row.comment_time || null,
   collectedAt: row.collected_at || null,
-  sourceKeyword: row.source_keyword || null
+  sourceKeyword: evidenceByComment.get(`${row.platform || job.dataSource}:${row.comment_id}`)?.sourceKeyword || row.source_keyword || null
 })).filter(row => row.text);
 const videos = (job.rawData.videos || []).map((row, index) => ({
   ref: `video:${index + 1}`, text: row.title,
