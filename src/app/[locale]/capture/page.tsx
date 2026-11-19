@@ -52,6 +52,7 @@ export default function CapturePage() {
     b[1].recent - a[1].recent
   );
   return <main className="mx-auto max-w-5xl px-5 py-10">
+    <Link href="/overview" className="mb-5 inline-block text-sm text-amber-700 underline">← 返回需求总览</Link>
     <p className="text-sm font-semibold text-amber-700">Business Radar</p><h1 className="mt-2 text-3xl font-semibold">采集与分析任务</h1>
     <p className="mt-2 text-sm text-zinc-600">{readiness?.webOnly ? '当前是服务器网页模式。采集与 AI 分析请在本地电脑运行；此处可查看已同步的任务记录。' : '先采集并保存评论，模型准备好后再手动分析。采集仍需在运行本应用的电脑上启动浏览器。'}</p>
     <div className="mt-5 rounded-xl border border-zinc-200 bg-white p-4 text-sm"><label className="block font-medium">分析模型来源<select aria-label="分析模型来源" value={aiProvider} onChange={e => { setAiProvider(e.target.value as typeof aiProvider); setReadiness(null); }} className="mt-2 block w-full max-w-sm rounded-lg border border-zinc-300 bg-white p-2"><option value="lmstudio">LM Studio（本机或安全隧道）</option><option value="glm">云端 GLM</option><option value="openai">云端 OpenAI 兼容 API</option><option value="ollama">Ollama（本机或安全隧道）</option></select></label><p className="mt-3"><strong>AI 状态：</strong>{readiness ? `${readiness.provider} · ${readiness.message}` : '正在检查…'}</p>{readiness?.models && readiness.models.length > 0 && <p className="mt-2 text-zinc-600">服务可见模型：{readiness.models.join('、')}</p>}<p className="mt-2 text-zinc-500">聊天和 embedding 会使用所选来源；密钥保存在服务端环境配置中，不在网页填写。</p></div>

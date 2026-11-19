@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import Link from "next/link";
 import { useTranslations, useLocale } from 'next-intl';
 import AnalysisForm, { DouyinNewConfig } from "@/components/AnalysisForm";
 import LoadingAnimation from "@/components/LoadingAnimation";
@@ -11,7 +10,6 @@ import DetailModal from "@/components/DetailModal";
 import ExportButton from "@/components/ExportButton";
 import RawDataExportButton from "@/components/RawDataExportButton";
 import DataQualityBanner from "@/components/DataQualityBanner";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 // The evidence library remains usable when the AI provider is offline.
 
@@ -117,7 +115,6 @@ const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export default function Home() {
   const t = useTranslations('home');
-  const tNav = useTranslations('nav');
   const tErrors = useTranslations('errors');
   const tLoading = useTranslations('loading');
   const tStats = useTranslations('home.stats');
@@ -228,38 +225,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen py-10 px-4 sm:px-6 flex flex-col items-center">
-      {/* 顶部导航 */}
-      <nav className="w-full max-w-5xl flex justify-between items-center mb-12 fade-in">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-[#18181B] rounded-lg flex items-center justify-center text-white font-bold text-xl">
-            A
-          </div>
-          <span className="font-bold text-xl tracking-tight text-[#18181B]">
-            DeepPoint<span className="text-gray-400 font-normal"> - ai </span>
-          </span>
-        </div>
-        <div className="hidden sm:flex gap-6 text-sm font-medium text-gray-500">
-          <Link href="/" className="text-[#18181B] hover:text-amber-600 transition">
-            {tNav('dashboard')}
-          </Link>
-          <Link href="/ai-product" className="hover:text-[#18181B] transition">
-            {tNav('aiProduct')}
-          </Link>
-          <Link href="/evidence" className="hover:text-[#18181B] transition">需求证据库</Link>
-          <Link href="/capture" className="hover:text-[#18181B] transition">采集任务</Link>
-          <Link href="/overview" className="hover:text-[#18181B] transition">需求总览</Link>
-          <Link href="/opportunities" className="hover:text-[#18181B] transition">需求主题</Link>
-        </div>
-        <div className="flex items-center gap-3">
-          <LanguageSwitcher />
-          <button className="w-8 h-8 rounded-full bg-[#E5E4DE] flex items-center justify-center hover:bg-[#F3F2EE] transition">
-            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          </button>
-        </div>
-      </nav>
-
       {/* 主容器 */}
       <main className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 左侧：输入控制区 */}
