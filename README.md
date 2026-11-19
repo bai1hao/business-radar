@@ -1,10 +1,24 @@
 [English](./README.EN.md) | 中文
 
-# DeepPoint - 用户痛点发现器
+# Business Radar — 从评论证据到可验证的商业需求
 
 ![logo](./assets/logo.png)
 
-一个帮助个人开发者从社交媒体自动发现用户核心痛点的 Web 应用，支持智能聚类分析和 AI 产品方案生成。
+Business Radar 是 [DeepPoint](https://github.com/weiyf2/deeppoint-ai) 的公开 Fork。保留上游的采集、语义聚类和 AI 产品建议能力，重点扩展为一个可保存原话、核实线索、跟进潜在用户并记录实验结果的需求研究工具。
+
+## 相比原项目，增加了什么
+
+| 方向 | Business Radar 的改进 |
+| --- | --- |
+| 原始证据 | 采集评论先保存到本地证据库；保留原文、原帖、评论 ID、发布时间和搜索词。模型未启动时也能查阅，人工可补充评论直达链接。 |
+| 需求核实 | 近 90 天优先线索、人工判读、原帖核实、联系状态和跟进记录；规则提示只用于初筛，不把评论数量当作付费人数。 |
+| 机会管理 | 将多条证据归并为需求主题，记录继续调查、做实验、暂缓或排除的决定及理由，并保存反例与待验证问题。 |
+| 分步运行 | 先采集、后分析；任务和原始数据落盘，模型离线或分析失败后可重试。可逐次选择 LM Studio、Ollama 或云端 API。 |
+| 本地 Agent | 可将真实采集数据导出为 Agent 可读文件，并提供分析指引、固定结果路径和证据引用校验；目前通过命令行交接，尚未自动显示在网页中。 |
+| 迭代依据 | 质量页展示来源、时间和链接覆盖情况、搜索词线索产出及每日实验快照；回复、试用和付费表态由人工记录。 |
+| 轻量部署 | 提供 Debian 12 单机部署示例；服务器可只运行网页和证据库，采集与 AI 分析留在本地电脑。家用电脑与服务器之间尚无自动同步。 |
+
+**当前边界：**AI 评分是待核实的辅助判断，尚未完成与人工标注的系统性准确率评测。抖音新版爬虫沿用 MediaCrawler 代码，受非商业学习许可证约束；见 [第三方许可说明](./NOTICE.md)。上游更新和同步方式见 [UPSTREAM.md](./UPSTREAM.md)。
 
 ## 两种分析方式
 
@@ -69,8 +83,8 @@
 ### 1. 安装依赖
 
 ```bash
-git clone https://github.com/weiyf2/deeppoint-ai.git
-cd deeppoint-ai
+git clone https://github.com/bai1hao/business-radar.git
+cd business-radar
 
 # 方式 A：一键准备本地环境（Node 依赖、Python venv、Playwright Chromium、.env.local）
 npm run setup:local
@@ -160,7 +174,7 @@ LM Studio 实测配置：在 `.env.local` 设置 `AI_PROVIDER=lmstudio`、`LM_ST
 ## 项目结构
 
 ```
-deeppoint-ai/
+business-radar/
 ├── src/
 │   ├── app/
 │   │   ├── [locale]/             # 国际化动态路由

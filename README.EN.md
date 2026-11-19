@@ -1,10 +1,23 @@
 English | [中文](./README.md)
 
-# DeepPoint - User Pain Point Discoverer
+# Business Radar — From Comment Evidence to Validated Demand
 
 ![logo](./assets/logo.png)
 
-A web application that helps indie developers automatically discover user pain points from social media, with intelligent clustering analysis and AI-powered product solution generation.
+Business Radar is a public fork of [DeepPoint](https://github.com/weiyf2/deeppoint-ai). It keeps the upstream collection, semantic clustering, and AI product suggestion features, while adding an evidence and validation workflow for researching business demand.
+
+## What's New in This Fork
+
+| Area | Business Radar addition |
+| --- | --- |
+| Evidence | Saves collected comments before AI analysis, with original text, post URL, comment ID, publication time, and search keyword. Evidence remains available while the model is offline. |
+| Validation | Recent-lead filters, manual review, source verification, contact status, follow-ups, and explicit payment evidence. Rule-based signals are only a first pass. |
+| Opportunities | Groups evidence into demand themes and records decisions, counterexamples, and questions for the next interview or experiment. |
+| Flexible analysis | Capture now, analyze later; persisted jobs can be retried. Choose LM Studio, Ollama, or a cloud API per run. A local Agent can also read exported files and write a checked JSON result; this workflow currently uses the command line. |
+| Measurement | Quality dashboard for source/date/link coverage, keyword yield, and daily experiment snapshots. Replies, trials, and payment statements require manual recording. |
+| Deployment | Debian 12 single-server examples, including a web-only mode. Automatic home-PC-to-server synchronization is not yet implemented. |
+
+**Limits:** AI opportunity scores have not been systematically benchmarked against human labels. The newer Douyin crawler includes MediaCrawler-derived code under a non-commercial learning license; see [NOTICE.md](./NOTICE.md). See [UPSTREAM.md](./UPSTREAM.md) for upstream tracking.
 
 ## Features
 
@@ -62,8 +75,8 @@ A web application that helps indie developers automatically discover user pain p
 ### 1. Install Dependencies
 
 ```bash
-git clone https://github.com/weiyf2/deeppoint-ai.git
-cd deeppoint-ai
+git clone https://github.com/bai1hao/business-radar.git
+cd business-radar
 
 # Option A: prepare local dependencies, Python venv, Playwright Chromium, and .env.local
 npm run setup:local
@@ -151,7 +164,7 @@ Chat analysis supports `AI_PROVIDER=glm|openai|ollama|lmstudio`. GLM and OpenAI 
 ## Project Structure
 
 ```
-deeppoint-ai/
+business-radar/
 ├── src/
 │   ├── app/
 │   │   ├── [locale]/             # Internationalized dynamic routes
