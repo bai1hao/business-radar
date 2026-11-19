@@ -14,7 +14,7 @@ export function needSignals(text: string): string[] {
 export function isPriorityEvidence(text: string): boolean {
   const signals = needSignals(text);
   const concreteTask = /(录入|输入|填写|整理|统计|汇总|复制|粘贴|核对|计算|调整|导出|下载|生成|填充|合并|报表|订单|工作表|网页|文件名)/i.test(text);
-  const workContext = /(工作|公司|数据|表格|报表|文件|订单|网页|客户|员工|财务|视频|图片|素材|内容|信息|明细)/i.test(text);
+  const workContext = /(工作|公司|数据|表格|报表|文件|订单|网页|客户|员工|财务|视频|图片|素材|内容|信息|明细|供应商|商品|采购|付款|金额|对账)/i.test(text);
   return workContext && concreteTask && (signals.includes('明确求解') || signals.includes('重复劳动') || signals.includes('付费表态'));
 }
 
