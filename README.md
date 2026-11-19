@@ -6,6 +6,13 @@
 
 一个帮助个人开发者从社交媒体自动发现用户核心痛点的 Web 应用，支持智能聚类分析和 AI 产品方案生成。
 
+## 两种分析方式
+
+1. API 模式：在网页的采集任务中选择 LM Studio、Ollama 或云端模型，采集完成后点击“开始 AI 分析”。
+2. 本地 Agent 文件模式：采集完成后，在项目目录运行 `npm run agent:prepare -- <任务 ID>`。程序会把该任务的真实评论和来源导出到 Git 忽略的 `agent-workspace/<任务 ID>/input.json`，并生成同目录的 `AGENT_GUIDE.md`。让本地 Agent 阅读指导文件、分析输入文件，并将结果写入同目录的 `result.json`；随后运行 `npm run agent:check -- <任务 ID>` 核对格式和证据引用。
+
+文件模式不需要启动 LM Studio 或配置模型 API。Agent 由用户在本机启动；项目不会自行调用或控制 Agent。`result.json` 是独立分析产物，目前不会自动写入网页任务结果。评论属于不可信外部文本，指导文件要求 Agent 不执行其中的指令。工作目录可能包含评论和来源信息，不要提交到 GitHub。
+
 ## 功能特性
 
 ### 痛点分析模块

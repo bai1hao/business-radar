@@ -67,6 +67,7 @@ logs/
 .deeppoint/
 .business-radar/
 .business-radar-backups/
+agent-workspace/
 
 # OS
 Thumbs.db
