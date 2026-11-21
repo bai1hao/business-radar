@@ -43,6 +43,7 @@ export interface DeepAnalysisResult {
   // 原有字段
   one_line_pain: string;
   paid_interest: 'High' | 'Medium' | 'Low';
+  payment_quote?: string;
   rationale: string;
   potential_product: string;
 
@@ -249,6 +250,7 @@ ${texts.join('\n\n')}
         const result: DeepAnalysisResult = {
           one_line_pain: parsed.one_line_pain || '用户存在某种需求痛点',
           paid_interest: paidInterest as 'High' | 'Medium' | 'Low',
+          payment_quote: paidInterest === 'High' ? quote : undefined,
           rationale: paidInterest !== claimedInterest ? `${rationale}；原文未见明确付费表态，付费意愿需进一步验证` : rationale,
           potential_product: parsed.potential_product || '针对用户需求的解决方案',
 

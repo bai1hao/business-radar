@@ -26,6 +26,7 @@ export interface ClusterResult {
   analysis: {
     one_line_pain: string;
     paid_interest: "High" | "Medium" | "Low";
+    payment_quote?: string;
     rationale: string;
     potential_product: string;
 

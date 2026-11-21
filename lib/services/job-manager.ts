@@ -540,6 +540,7 @@ export class JobManager {
             analysis: {
               one_line_pain: analysis.one_line_pain || '用户痛点待分析',
               paid_interest: analysis.paid_interest || 'Medium',
+              payment_quote: analysis.payment_quote,
               rationale: analysis.rationale || '基于用户评论分析',
               potential_product: analysis.potential_product || '产品概念待构思',
 
@@ -549,7 +550,10 @@ export class JobManager {
               mvp_plan: analysis.mvp_plan,
               keyword_relevance: analysis.keyword_relevance
             },
-            representative_texts: representativeTexts.slice(0, 5),
+            representative_texts: [...new Set([
+              ...representativeTexts.filter(text => text.trim() === analysis.payment_quote),
+              ...representativeTexts
+            ])].slice(0, 5),
             priority_score: priorityScore
           };
 
