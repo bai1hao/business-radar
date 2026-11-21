@@ -3,6 +3,7 @@ import path from 'node:path';
 import { NextResponse } from 'next/server';
 import { NO_STORE_HEADERS } from '../../../../../lib/services/http-headers';
 import { jobManager } from '../../../../../lib/services/job-manager';
+import { listEvidence } from '../../../../../lib/services/evidence-store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ job
     const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
     const result = JSON.parse(fs.readFileSync(resultPath, 'utf8'));
     if (input.jobId !== jobId || result.jobId !== jobId || result.schemaVersion !== 1 || !Array.isArray(result.findings)) throw new Error('结果结构不正确');
-    const sources = new Map<string, { text: string; sourceUrl?: string | null; commentCreatedAt?: string | null }>(
+    const evidenceByComment = new Map(listEvidence().filter(row => row.commentId).map(row => [JSON.stringify([row.platform, row.commentId]), row]));
+    const sources = new Map<string, { text: string; sourceUrl?: string | null; commentCreatedAt?: string | null; platform?: string; commentId?: string }>(
       [...(input.comments || []), ...(input.videos || [])].map(row => [row.ref, row])
     );
     const findings = result.findings.map((item: Record<string, unknown>) => {
@@ -35,7 +37,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ job
           const source = sources.get(ref)!;
           let sourceUrl: string | undefined;
           try { if (source.sourceUrl && ['http:', 'https:'].includes(new URL(source.sourceUrl).protocol)) sourceUrl = source.sourceUrl; } catch { /* omit unsafe URL */ }
-          return { ref, text: source.text, sourceUrl, commentCreatedAt: source.commentCreatedAt };
+          const row = source.commentId && source.platform
+            ? evidenceByComment.get(JSON.stringify([source.platform, source.commentId]))
+            : undefined;
+          const evidenceId = row?.text === source.text ? row?.id : undefined;
+          return { ref, text: source.text, sourceUrl, commentCreatedAt: source.commentCreatedAt, evidenceId };
         })
       };
     });
