@@ -19,7 +19,9 @@
 
 
 import asyncio
+import base64
 import functools
+import os
 import sys
 from typing import Optional
 
@@ -82,6 +84,11 @@ class DouYinLogin(AbstractLogin):
         except RetryError:
             utils.logger.info("[DouYinLogin.begin] login failed please confirm ...")
             sys.exit()
+        finally:
+            if config.LOGIN_TYPE == "qrcode":
+                qr_path = os.path.join(os.getcwd(), "browser_data", "login-qrcode.png")
+                if os.path.exists(qr_path):
+                    os.remove(qr_path)
 
         # wait for redirect
         wait_redirect_seconds = 5
@@ -129,8 +136,19 @@ class DouYinLogin(AbstractLogin):
             selector=qrcode_img_selector
         )
         if not base64_qrcode_img:
-            utils.logger.info("[DouYinLogin.login_by_qrcode] login qrcode not found please confirm ...")
-            sys.exit()
+            debug_dir = os.path.join(os.getcwd(), "browser_data")
+            os.makedirs(debug_dir, exist_ok=True)
+            screenshot_path = os.path.join(debug_dir, "login-debug.png")
+            await self.context_page.screenshot(path=screenshot_path, full_page=True)
+            raise RuntimeError(f"抖音登录二维码未出现；已保存当前页面截图：{screenshot_path}")
+
+        qr_dir = os.path.join(os.getcwd(), "browser_data")
+        os.makedirs(qr_dir, exist_ok=True)
+        qr_path = os.path.join(qr_dir, "login-qrcode.png")
+        qr_bytes = base64.b64decode(base64_qrcode_img.split(",")[-1])
+        with open(qr_path, "wb") as qr_file:
+            qr_file.write(qr_bytes)
+        utils.logger.info(f"[DouYinLogin.login_by_qrcode] 登录二维码已保存到 {qr_path}")
 
         partial_show_qrcode = functools.partial(utils.show_qrcode, base64_qrcode_img)
         asyncio.get_running_loop().run_in_executor(executor=None, func=partial_show_qrcode)
