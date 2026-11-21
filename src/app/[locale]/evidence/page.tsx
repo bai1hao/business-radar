@@ -38,7 +38,7 @@ export default function EvidencePage() {
     if (keyword) {
       setKeywordFilter(keyword);
       setStatusFilter('all');
-      setSignalFilter('all');
+      setSignalFilter(params.get('signal') === 'purchase' ? 'purchase' : 'all');
     }
     void refresh();
   }, []);
@@ -97,6 +97,7 @@ export default function EvidencePage() {
     (ageFilter === 'all' || (ageFilter === 'unknown' ? !row.commentCreatedAt : isRecentDate(row.commentCreatedAt, Number(ageFilter)))) &&
     (signalFilter === 'all' ||
       (signalFilter === 'priority' && isActionableEvidence(row.text, row.reviewVerdict)) ||
+      (signalFilter === 'purchase' && row.status !== 'dismissed' && isActionableEvidence(row.text, row.reviewVerdict) && needSignals(row.text).includes('购买询问')) ||
       (signalFilter === 'signals' && needSignals(row.text).length > 0) ||
       (signalFilter === 'missing-link' && isActionableEvidence(row.text, row.reviewVerdict) && !row.commentUrl) ||
       (signalFilter === 'verified-missing-link' && row.status === 'verified' && !row.commentUrl) ||
@@ -153,7 +154,7 @@ export default function EvidencePage() {
       <div className="flex flex-wrap gap-3">
         <input aria-label="搜索线索" value={query} onChange={e => { setQuery(e.target.value); setPage(1); }} placeholder="搜索评论原文或备注" className="min-w-64 flex-1 rounded-lg border border-zinc-300 bg-white p-3" />
         <select aria-label="筛选线索状态" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); if (signalFilter === 'verified-missing-link' && e.target.value !== 'verified') setSignalFilter('all'); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="all">全部状态</option><option value="new">待核实</option><option value="verified">已核实</option><option value="contacted">已联系</option><option value="dismissed">忽略</option></select>
-        <select aria-label="筛选需求信号" value={signalFilter} onChange={e => { setSignalFilter(e.target.value); if (e.target.value === 'verified-missing-link') { setStatusFilter('verified'); setAgeFilter('all'); } if (e.target.value === 'review-queue') { setStatusFilter('all'); setAgeFilter('90'); } setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="priority">优先核实</option><option value="review-queue">人工校准队列</option><option value="missing-link">优先核实 · 待补评论链接</option><option value="verified-missing-link">已核实 · 待补评论链接</option><option value="signals">所有需求提示</option><option value="all">全部评论</option></select>
+        <select aria-label="筛选需求信号" value={signalFilter} onChange={e => { setSignalFilter(e.target.value); if (e.target.value === 'verified-missing-link') { setStatusFilter('verified'); setAgeFilter('all'); } if (e.target.value === 'review-queue') { setStatusFilter('all'); setAgeFilter('90'); } setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="priority">优先核实</option><option value="purchase">购买询问</option><option value="review-queue">人工校准队列</option><option value="missing-link">优先核实 · 待补评论链接</option><option value="verified-missing-link">已核实 · 待补评论链接</option><option value="signals">所有需求提示</option><option value="all">全部评论</option></select>
         <select aria-label="筛选评论发布时间" value={ageFilter} onChange={e => { setAgeFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="30">近 30 天</option><option value="90">近 90 天</option><option value="180">近 180 天</option><option value="365">近 365 天</option><option value="all">全部时间</option><option value="unknown">发布时间未知</option></select>
         <select aria-label="筛选来源搜索词" value={keywordFilter} onChange={e => { setKeywordFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="all">全部搜索词</option>{[...new Set(rows.flatMap(row => row.sourceKeywords?.length ? row.sourceKeywords : row.sourceKeyword ? [row.sourceKeyword] : []))].sort().map(value => <option key={value} value={value}>{value}</option>)}<option value="unknown">来源搜索词未知</option></select>
       </div>
