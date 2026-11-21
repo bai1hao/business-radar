@@ -1,5 +1,5 @@
 import { isRecentDate } from './evidence-freshness';
-import { isActionableEvidence } from './need-signals';
+import { isActionableEvidence, needSignals } from './need-signals';
 
 export interface QualityEvidence {
   platform: string;
@@ -31,7 +31,8 @@ export function getSourceQuality(rows: QualityEvidence[]) {
     const recent = group.filter(row => isRecentDate(row.commentCreatedAt));
     const actionable = recent.filter(row => row.status !== 'dismissed' && isActionableEvidence(row.text, row.reviewVerdict));
     const reachable = actionable.filter(row => Boolean(row.commentUrl || row.contactUrl));
-    return { keyword, collected: group.length, recent: recent.length, actionable: actionable.length, reachable: reachable.length };
+    const purchaseQuestions = actionable.filter(row => needSignals(row.text).includes('购买询问')).length;
+    return { keyword, collected: group.length, recent: recent.length, actionable: actionable.length, reachable: reachable.length, purchaseQuestions };
   });
   return { total: rows.length, dated: dated.length, direct: direct.length, duplicateCount, platforms, keywordResults };
 }
