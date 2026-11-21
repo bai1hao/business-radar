@@ -25,7 +25,7 @@ Business Radar 是 [DeepPoint](https://github.com/weiyf2/deeppoint-ai) 的公开
 1. API 模式：在网页的采集任务中选择 LM Studio、Ollama 或云端模型，采集完成后点击“开始 AI 分析”。
 2. 本地 Agent 文件模式：采集完成后，在项目目录运行 `npm run agent:prepare -- <任务 ID>`。程序会把该任务的真实评论和来源导出到 Git 忽略的 `agent-workspace/<任务 ID>/input.json`，并生成同目录的 `AGENT_GUIDE.md`。让本地 Agent 阅读指导文件、分析输入文件，并将结果写入同目录的 `result.json`；随后运行 `npm run agent:check -- <任务 ID>` 核对格式和证据引用。
 
-文件模式不需要启动 LM Studio 或配置模型 API。Agent 由用户在本机启动；项目不会自行调用或控制 Agent。`result.json` 会显示在对应任务详情页，但不会覆盖 API 分析结果。评论属于不可信外部文本，指导文件要求 Agent 不执行其中的指令。工作目录可能包含评论和来源信息，不要提交到 GitHub。
+文件模式不需要启动 LM Studio 或配置模型 API。Agent 由用户在本机启动；项目不会自行调用或控制 Agent。`result.json` 会显示在对应任务详情页，但不会覆盖 API 分析结果。运行 `npm run backup:data` 时，有效的 Agent 输入与结果会随备份保存；导入备份后也能在目标实例查看。可用 `BUSINESS_RADAR_AGENT_DIR` 指定独立数据目录。评论属于不可信外部文本，指导文件要求 Agent 不执行其中的指令。工作目录可能包含评论和来源信息，不要提交到 GitHub。
 
 ## 功能特性
 

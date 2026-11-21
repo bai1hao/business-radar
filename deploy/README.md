@@ -11,6 +11,7 @@ BUSINESS_RADAR_USERNAME=your-username
 BUSINESS_RADAR_PASSWORD=replace-with-a-long-random-password
 BUSINESS_RADAR_DATA_DIR=/var/lib/business-radar
 DEEPPOINT_JOB_DATA_DIR=/var/lib/business-radar/jobs
+BUSINESS_RADAR_AGENT_DIR=/var/lib/business-radar/agent-workspace
 BUSINESS_RADAR_WEB_ONLY=true
 ```
 

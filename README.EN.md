@@ -19,6 +19,8 @@ Business Radar is a public fork of [DeepPoint](https://github.com/weiyf2/deeppoi
 
 **Limits:** AI opportunity scores have not been systematically benchmarked against human labels. The newer Douyin crawler includes MediaCrawler-derived code under a non-commercial learning license; see [NOTICE.md](./NOTICE.md). See [UPSTREAM.md](./UPSTREAM.md) for upstream tracking.
 
+Validated local Agent input/result pairs are included in `npm run backup:data` snapshots and restored by `npm run import:data`. Set `BUSINESS_RADAR_AGENT_DIR` when the Agent workspace needs a separate writable data directory.
+
 ## Features
 
 ### Pain Point Analysis Module

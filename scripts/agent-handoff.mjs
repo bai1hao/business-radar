@@ -9,7 +9,7 @@ if (!['prepare', 'check'].includes(action) || !jobId || !/^[a-f\d-]{36}$/i.test(
 
 const jobRoot = process.env.DEEPPOINT_JOB_DATA_DIR || path.join(process.cwd(), '.deeppoint', 'jobs');
 const jobPath = path.join(jobRoot, 'analysis', `${jobId}.json`);
-const workspace = path.join(process.cwd(), 'agent-workspace', jobId);
+const workspace = path.join(process.env.BUSINESS_RADAR_AGENT_DIR || path.join(process.cwd(), 'agent-workspace'), jobId);
 const inputPath = path.join(workspace, 'input.json');
 const outputPath = path.join(workspace, 'result.json');
 const guidePath = path.join(workspace, 'AGENT_GUIDE.md');

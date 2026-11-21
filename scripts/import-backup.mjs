@@ -13,8 +13,10 @@ if (!snapshot || !fs.statSync(snapshot, { throwIfNoEntry: false })?.isDirectory(
 const cwd = process.cwd();
 const dataRoot = path.resolve(process.env.BUSINESS_RADAR_DATA_DIR || path.join(cwd, '.business-radar'));
 const jobsRoot = path.resolve(process.env.DEEPPOINT_JOB_DATA_DIR || path.join(cwd, '.deeppoint', 'jobs'));
+const agentRoot = path.resolve(process.env.BUSINESS_RADAR_AGENT_DIR || path.join(cwd, 'agent-workspace'));
 const arrays = [];
 const jobs = [];
+const agentFiles = [];
 const conflicts = [];
 let jobFilesSeen = 0;
 const comparedFields = {
@@ -69,6 +71,27 @@ function collectJobs(directory, relative = '') {
   }
 }
 collectJobs(path.join(snapshot, 'jobs'));
+const incomingAgentRoot = path.join(snapshot, 'agent-results');
+if (fs.existsSync(incomingAgentRoot)) {
+  for (const entry of fs.readdirSync(incomingAgentRoot, { withFileTypes: true })) {
+    if (entry.isSymbolicLink() || !entry.isDirectory() || !/^[a-f\d-]{36}$/i.test(entry.name)) throw new Error(`Agent 结果目录无效：${entry.name}`);
+    const directory = path.join(incomingAgentRoot, entry.name);
+    const input = path.join(directory, 'input.json');
+    const result = path.join(directory, 'result.json');
+    if (!fs.existsSync(input) || !fs.existsSync(result) || fs.lstatSync(input).isSymbolicLink() || fs.lstatSync(result).isSymbolicLink()) throw new Error(`Agent 结果不完整：${entry.name}`);
+    const parsedInput = JSON.parse(fs.readFileSync(input, 'utf8'));
+    const parsedResult = JSON.parse(fs.readFileSync(result, 'utf8'));
+    const refs = new Set([...(parsedInput.comments || []), ...(parsedInput.videos || [])].map(row => row.ref));
+    if (parsedInput.jobId !== entry.name || parsedResult.jobId !== entry.name || parsedResult.schemaVersion !== 1 || !Array.isArray(parsedResult.findings) || parsedResult.findings.some(item => !Array.isArray(item.evidenceRefs) || !item.evidenceRefs.length || item.evidenceRefs.some(ref => !refs.has(ref)))) throw new Error(`Agent 结果格式无效：${entry.name}`);
+    for (const name of ['input.json', 'result.json']) {
+      const source = path.join(directory, name);
+      const target = path.join(agentRoot, entry.name, name);
+      if (fs.existsSync(target) && !merge) throw new Error(`目标 Agent 结果已存在，使用 --merge：${target}`);
+      if (!fs.existsSync(target)) agentFiles.push({ source, target });
+      else if (fs.readFileSync(source, 'utf8') !== fs.readFileSync(target, 'utf8')) conflicts.push({ type: 'agent-result', id: entry.name, fields: [name] });
+    }
+  }
+}
 const snapshotSource = path.join(snapshot, 'experiment-snapshots.json');
 const snapshotTarget = path.join(dataRoot, 'experiment-snapshots.json');
 let snapshotImport;
@@ -90,9 +113,10 @@ if (fs.existsSync(snapshotSource)) {
   }
   snapshotImport = { target: snapshotTarget, rows: [...current, ...added], added: added.length };
 }
-if (arrays.length === 0 && jobFilesSeen === 0 && !snapshotImport) throw new Error('备份目录中没有证据、主题、实验快照或任务 JSON 文件');
+if (arrays.length === 0 && jobFilesSeen === 0 && agentFiles.length === 0 && !snapshotImport) throw new Error('备份目录中没有证据、主题、实验快照、Agent 结果或任务 JSON 文件');
 
 console.log(`导入预览：新增证据 ${arrays.find(item => item.target.endsWith('evidence.json'))?.added || 0} 条，主题 ${arrays.find(item => item.target.endsWith('opportunities.json'))?.added || 0} 个，任务 ${jobs.length} 个；同 ID 差异 ${conflicts.length} 处。`);
+console.log(`Agent 文件：可新增 ${agentFiles.length} 个；原有文件冲突时保留目标数据。`);
 if (snapshotImport) console.log(`实验快照：可新增 ${snapshotImport.added} 条；同日期与标签的现有记录优先。`);
 if (conflicts.length) {
   console.log('同 ID 差异（现有数据优先，以下字段不会被覆盖）：');
@@ -115,6 +139,13 @@ try {
     } finally {
       fs.unlinkSync(temporary);
     }
+  }
+  for (const { source, target } of agentFiles) {
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    const temporary = `${target}.${randomUUID()}.tmp`;
+    fs.copyFileSync(source, temporary, fs.constants.COPYFILE_EXCL);
+    try { fs.linkSync(temporary, target); created.push(target); }
+    finally { fs.unlinkSync(temporary); }
   }
   for (const { target, rows, added } of arrays) {
     if (added === 0) continue;

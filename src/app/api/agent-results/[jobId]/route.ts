@@ -11,7 +11,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ job
   const { jobId } = await params;
   if (!/^[a-f\d-]{36}$/i.test(jobId)) return NextResponse.json({ error: '无效任务' }, { status: 400, headers: NO_STORE_HEADERS });
   if (!jobManager.getJob(jobId)) return NextResponse.json({ error: '任务不存在' }, { status: 404, headers: NO_STORE_HEADERS });
-  const dir = path.join(process.cwd(), 'agent-workspace', jobId);
+  const dir = path.join(process.env.BUSINESS_RADAR_AGENT_DIR || path.join(process.cwd(), 'agent-workspace'), jobId);
   const inputPath = path.join(dir, 'input.json');
   const resultPath = path.join(dir, 'result.json');
   if (!fs.existsSync(inputPath) || !fs.existsSync(resultPath)) return NextResponse.json({ error: '尚无 Agent 分析结果' }, { status: 404, headers: NO_STORE_HEADERS });
