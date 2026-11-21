@@ -122,8 +122,7 @@ export class GLMService {
 - emotional_intensity: 用户情绪强度评分（0-5，0=无感，5=极度强烈）
 
 2️⃣ 市场与竞品分析（market_landscape）
-- existing_solutions: 现有解决方案（数组，2-3个，格式：{name, limitation}）
-  注意：基于你的知识库分析，如果不确定请说明"需要进一步调研"
+- existing_solutions: 列出最多 3 种有依据的现有解决方案（格式：{name, limitation}），包括用户提到的手工流程、模板或 AI Agent。无法判断时返回空数组，并说明仍需调研。
 - unmet_needs: 哪些需求尚未被满足？（数组，2-3个字符串）
 - opportunity: 说明现成 AI Agent 或普通工具可以覆盖哪些步骤、用户自行采用的具体障碍，以及是否还有模板、代配置、服务或专用软件的交付价值。区分原文支持的事实和待核实的推测；证据不足时写“待验证”。
 

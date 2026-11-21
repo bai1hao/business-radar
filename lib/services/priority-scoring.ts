@@ -74,11 +74,11 @@ export class PriorityScorer {
            !s.name.includes('API调用失败')
     );
 
-    const validCount = validSolutions.length;
+    const validCount = new Set(validSolutions.map(solution => solution.name.trim().toLowerCase()).filter(Boolean)).size;
 
     // 评分规则
     if (validCount === 0) {
-      return 5.0; // 蓝海，无竞品
+      return 3.0; // 缺少可用的竞品资料时使用中性分
     } else if (validCount === 1) {
       return 4.0; // 低竞争
     } else if (validCount === 2) {
