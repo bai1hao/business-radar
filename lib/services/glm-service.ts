@@ -10,6 +10,7 @@ const deepAnalysisSchema = {
     properties: {
       one_line_pain: textField,
       paid_interest: { type: 'string', enum: ['High', 'Medium', 'Low'] },
+      payment_quote: textField,
       rationale: textField,
       potential_product: textField,
       pain_depth: {
@@ -33,7 +34,7 @@ const deepAnalysisSchema = {
       },
       market_size_score: { type: 'number' }, keyword_relevance: { type: 'number' }
     },
-    required: ['one_line_pain', 'paid_interest', 'rationale', 'potential_product', 'pain_depth', 'market_landscape', 'mvp_plan', 'market_size_score', 'keyword_relevance']
+    required: ['one_line_pain', 'paid_interest', 'payment_quote', 'rationale', 'potential_product', 'pain_depth', 'market_landscape', 'mvp_plan', 'market_size_score', 'keyword_relevance']
   }
 } as const;
 
@@ -160,6 +161,7 @@ ${texts.join('\n\n')}
 {
   "one_line_pain": "核心痛点一句话总结",
   "paid_interest": "High/Medium/Low",
+  "payment_quote": "若评为 High，逐字复制一条完整的付费承诺或预算原文；否则留空",
   "rationale": "判断理由，引用原文",
   "potential_product": "产品概念一句话",
   "pain_depth": {
@@ -238,7 +240,10 @@ ${texts.join('\n\n')}
         // 验证必需字段
         // 验证并填充默认值
         const claimedInterest = ['High', 'Medium', 'Low'].includes(parsed.paid_interest) ? parsed.paid_interest : 'Medium';
-        const paymentEvidence = texts.some(text => /付费|愿意花|愿意买|花钱|购买|订阅|预算|报价|价格|多少钱|收费|买一个/.test(text));
+        const quote = typeof parsed.payment_quote === 'string' ? parsed.payment_quote.trim() : '';
+        const paymentEvidence = texts.some(text => text.trim() === quote)
+          && !/[?？]|不愿|不会|不想|没预算|免费|多少钱|能卖吗|可以卖吗|would you|how much/i.test(quote)
+          && /愿意(?:付费|花钱|买)|接受.{0,12}报价|预算.{0,8}\d|愿付.{0,8}\d|(?:my|our) budget is\s*[$£€]?\s*\d|i(?:'m| am) willing to pay/i.test(quote);
         const paidInterest = claimedInterest === 'High' && !paymentEvidence ? 'Medium' : claimedInterest;
         const rationale = parsed.rationale || '基于用户评论内容分析';
         const result: DeepAnalysisResult = {
