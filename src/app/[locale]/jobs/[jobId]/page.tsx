@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 
-type Result = { id: string; size: number; source_type?: 'video' | 'comment'; representative_texts: string[]; source_refs?: Array<{ url: string; directComment: boolean; createdAt?: string; evidenceId?: string } | null>; analysis: { one_line_pain: string; rationale: string; potential_product: string; paid_interest: string } };
+type Result = { id: string; size: number; source_type?: 'video' | 'comment'; representative_texts: string[]; source_refs?: Array<{ url: string; directComment: boolean; createdAt?: string; evidenceId?: string } | null>; analysis: { one_line_pain: string; rationale: string; potential_product: string; paid_interest: string; market_landscape?: { opportunity: string }; mvp_plan?: { validation_hypotheses?: Array<{ hypothesis: string; test_method: string }> } } };
 type Job = { jobId: string; status: string; progress: string; keywords?: string[]; aiProvider?: string; crawlStats?: { videoCount?: number; commentCount?: number; textCount?: number }; sourceDateSummary?: { totalComments: number; datedComments: number; recent90: number; newestCommentAt?: string }; clusteredData?: Array<{ videos: Array<{ title: string }>; comments: Array<{ comment_text: string }> }>; results?: Result[]; error?: string };
 type AgentFinding = { title: string; agentAlternative: string; customerAdoptionBarrier: string; paymentEvidence: string; confidence: string; nextStep: string; evidence: Array<{ ref: string; text: string; sourceUrl?: string; commentCreatedAt?: string }> };
 
@@ -61,6 +61,8 @@ export default function JobDetailPage() {
           <div className="flex items-start justify-between gap-3"><h3 className="text-lg font-semibold">{result.analysis.one_line_pain}</h3><span className="shrink-0 text-sm text-zinc-500">{result.size} 条相似文本</span></div>
           <p className="mt-3 text-sm text-zinc-700">{result.analysis.rationale}</p>
           <p className="mt-3 text-sm"><strong>可能的产品方向：</strong>{result.analysis.potential_product}</p>
+          {result.analysis.market_landscape?.opportunity && <p className="mt-3 text-sm"><strong>机会判断：</strong>{result.analysis.market_landscape.opportunity}</p>}
+          {result.analysis.mvp_plan?.validation_hypotheses?.[0]?.test_method && <p className="mt-3 text-sm"><strong>优先验证：</strong>{result.analysis.mvp_plan.validation_hypotheses[0].test_method}</p>}
           <div className="mt-4 rounded-xl bg-zinc-50 p-4"><p className="text-xs font-semibold text-zinc-500">代表性原文</p>{result.representative_texts.map((text, index) => <div key={`${result.id}-${index}`} className="mt-2 border-t border-zinc-200 pt-2 text-sm"><p>{text}</p>{result.source_refs?.[index] && <p className="mt-1 flex flex-wrap gap-2 text-xs text-zinc-500">{result.source_refs[index]?.createdAt && <span>发布于 {new Date(result.source_refs[index]!.createdAt!).toLocaleDateString()}</span>}<a href={result.source_refs[index]!.url} target="_blank" rel="noopener noreferrer" className="text-amber-700 underline">{result.source_refs[index]?.directComment ? '打开原评论' : '打开原帖'}</a>{result.source_refs[index]?.evidenceId && <Link href={`/evidence?id=${encodeURIComponent(result.source_refs[index]!.evidenceId!)}`} className="text-amber-700 underline">在证据库判读</Link>}</p>}</div>)}</div>
         </article>)}
       </section>}
