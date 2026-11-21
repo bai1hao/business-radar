@@ -83,13 +83,17 @@ if (fs.existsSync(incomingAgentRoot)) {
     const parsedResult = JSON.parse(fs.readFileSync(result, 'utf8'));
     const refs = new Set([...(parsedInput.comments || []), ...(parsedInput.videos || [])].map(row => row.ref));
     if (parsedInput.jobId !== entry.name || parsedResult.jobId !== entry.name || parsedResult.schemaVersion !== 1 || !Array.isArray(parsedResult.findings) || parsedResult.findings.some(item => !Array.isArray(item.evidenceRefs) || !item.evidenceRefs.length || item.evidenceRefs.some(ref => !refs.has(ref)))) throw new Error(`Agent 结果格式无效：${entry.name}`);
+    const pending = [];
+    const different = [];
     for (const name of ['input.json', 'result.json']) {
       const source = path.join(directory, name);
       const target = path.join(agentRoot, entry.name, name);
       if (fs.existsSync(target) && !merge) throw new Error(`目标 Agent 结果已存在，使用 --merge：${target}`);
-      if (!fs.existsSync(target)) agentFiles.push({ source, target });
-      else if (fs.readFileSync(source, 'utf8') !== fs.readFileSync(target, 'utf8')) conflicts.push({ type: 'agent-result', id: entry.name, fields: [name] });
+      if (!fs.existsSync(target)) pending.push({ source, target });
+      else if (fs.readFileSync(source, 'utf8') !== fs.readFileSync(target, 'utf8')) different.push(name);
     }
+    if (different.length) conflicts.push({ type: 'agent-result', id: entry.name, fields: different });
+    else agentFiles.push(...pending);
   }
 }
 const snapshotSource = path.join(snapshot, 'experiment-snapshots.json');
@@ -113,7 +117,7 @@ if (fs.existsSync(snapshotSource)) {
   }
   snapshotImport = { target: snapshotTarget, rows: [...current, ...added], added: added.length };
 }
-if (arrays.length === 0 && jobFilesSeen === 0 && agentFiles.length === 0 && !snapshotImport) throw new Error('备份目录中没有证据、主题、实验快照、Agent 结果或任务 JSON 文件');
+if (arrays.length === 0 && jobFilesSeen === 0 && !fs.existsSync(incomingAgentRoot) && !snapshotImport) throw new Error('备份目录中没有证据、主题、实验快照、Agent 结果或任务 JSON 文件');
 
 console.log(`导入预览：新增证据 ${arrays.find(item => item.target.endsWith('evidence.json'))?.added || 0} 条，主题 ${arrays.find(item => item.target.endsWith('opportunities.json'))?.added || 0} 个，任务 ${jobs.length} 个；同 ID 差异 ${conflicts.length} 处。`);
 console.log(`Agent 文件：可新增 ${agentFiles.length} 个；原有文件冲突时保留目标数据。`);
