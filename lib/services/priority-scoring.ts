@@ -39,21 +39,11 @@ export class PriorityScorer {
     totalDataSize: number,
     glmMarketScore: number  // AI 模型评估的市场规模 0-5
   ): number {
+    if (totalDataSize < 50) return 2.5; // 探索样本缺少市场规模依据
     // 数据维度得分：基于聚类占比和数据量
-    let dataScore = 2.5;  // 基础分
-
-    if (totalDataSize >= 50) {
-      // 数据量充足时，基于聚类占比计算
-      const sizeRatio = clusterSize / totalDataSize;
-      dataScore = Math.min(5, 2.0 + sizeRatio * 15);  // 基础2分，占比加成最多3分
-
-      // 数据量加成
-      if (totalDataSize >= 200) {
-        dataScore = Math.min(5, dataScore + 0.5);
-      } else if (totalDataSize >= 100) {
-        dataScore = Math.min(5, dataScore + 0.3);
-      }
-    }
+    const sizeRatio = clusterSize / totalDataSize;
+    const sampleBoost = totalDataSize >= 200 ? 0.5 : totalDataSize >= 100 ? 0.3 : 0;
+    const dataScore = Math.min(5, 2 + sizeRatio * 15 + sampleBoost);
 
     // 加权计算：数据维度 40% + AI 模型评估 60%
     const total = dataScore * 0.4 + glmMarketScore * 0.6;
