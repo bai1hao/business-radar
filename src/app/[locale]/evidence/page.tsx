@@ -80,7 +80,8 @@ export default function EvidencePage() {
   const reviewed = recent.filter(row => row.reviewVerdict);
   const pendingReview = recent.filter(row => !row.reviewVerdict);
   const reviewQueue = [
-    ...pendingReview.filter(row => isPriorityEvidence(row.text)),
+    ...pendingReview.filter(row => isPriorityEvidence(row.text) && needSignals(row.text).includes('购买询问')),
+    ...pendingReview.filter(row => isPriorityEvidence(row.text) && !needSignals(row.text).includes('购买询问')),
     ...pendingReview.filter(row => !isPriorityEvidence(row.text)).sort((a, b) => a.id.localeCompare(b.id))
   ].slice(0, 30);
   const reviewIds = new Set(reviewQueue.map(row => row.id));
