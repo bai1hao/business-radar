@@ -13,10 +13,17 @@ function safeUrl(value: string | undefined): string | undefined {
   try { return ['http:', 'https:'].includes(new URL(value).protocol) ? value : undefined; } catch { return undefined; }
 }
 
-function linkResults(results: ClusterResult[], job: { rawData?: { videos: RawVideoData[] }; clusteredData?: ClusteredDataGroup[] }): LinkedResult[] {
+function linkResults(results: ClusterResult[], job: { rawData?: { videos: RawVideoData[]; comments: RawCommentData[] }; clusteredData?: ClusteredDataGroup[] }): LinkedResult[] {
   const evidenceByText = new Map<string, ReturnType<typeof listEvidence>>();
   for (const row of listEvidence()) evidenceByText.set(row.text, [...(evidenceByText.get(row.text) || []), row]);
   const videosByTitle = new Map<string, RawVideoData[]>();
+  const rawComments = job.rawData?.comments ?? job.clusteredData?.flatMap(group => group.comments) ?? [];
+  const commentsByText = new Map<string, RawCommentData[]>();
+  for (const comment of rawComments) {
+    const matches = commentsByText.get(comment.comment_text) ?? [];
+    matches.push(comment);
+    commentsByText.set(comment.comment_text, matches);
+  }
   for (const video of job.rawData?.videos || []) videosByTitle.set(video.title, [...(videosByTitle.get(video.title) || []), video]);
   return results.map(result => {
     const group = job.clusteredData?.find(group =>
@@ -32,7 +39,12 @@ function linkResults(results: ClusterResult[], job: { rawData?: { videos: RawVid
           const url = matches?.length === 1 ? safeUrl(matches[0].video_url) : undefined;
           return url ? { url, directComment: false, createdAt: matches?.[0].publish_time } : null;
         }
-        const matches = evidenceByText.get(text);
+        const captured = commentsByText.get(text);
+        const matches = evidenceByText.get(text)?.filter(row => captured?.some(comment =>
+          comment.comment_id
+            ? row.commentId === comment.comment_id && (comment.platform ? row.platform === comment.platform : row.sourceUrl === comment.video_url)
+            : Boolean(comment.video_url && row.sourceUrl === comment.video_url)
+        ));
         if (matches?.length !== 1) return null;
         const row = matches[0];
         const commentUrl = safeUrl(row.commentUrl);
