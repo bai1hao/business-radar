@@ -17,6 +17,7 @@ export default function EvidencePage() {
   const [signalFilter, setSignalFilter] = useState('priority');
   const [followUpFilter, setFollowUpFilter] = useState(false);
   const [ageFilter, setAgeFilter] = useState('90');
+  const [platformFilter, setPlatformFilter] = useState('');
   const [keywordFilter, setKeywordFilter] = useState('all');
   const [selectedEvidenceId, setSelectedEvidenceId] = useState('');
   const [page, setPage] = useState(1);
@@ -31,6 +32,13 @@ export default function EvidencePage() {
     const evidenceId = params.get('id');
     if (evidenceId) {
       setSelectedEvidenceId(evidenceId);
+      setStatusFilter('all');
+      setSignalFilter('all');
+      setAgeFilter('all');
+    }
+    const platform = params.get('platform');
+    if (platform) {
+      setPlatformFilter(platform);
       setStatusFilter('all');
       setSignalFilter('all');
       setAgeFilter('all');
@@ -98,6 +106,7 @@ export default function EvidencePage() {
     (followUpFilter ? row.status !== 'dismissed' && Boolean(row.nextFollowUpAt && row.nextFollowUpAt <= today) : true) &&
     (followUpFilter ||
     (statusFilter === 'all' || row.status === statusFilter) &&
+    (!platformFilter || row.platform === platformFilter) &&
     (keywordFilter === 'all' || (keywordFilter === 'unknown' ? !row.sourceKeyword && !row.sourceKeywords?.length : row.sourceKeyword === keywordFilter || row.sourceKeywords?.includes(keywordFilter))) &&
     (ageFilter === 'all' || (ageFilter === 'unknown' ? !row.commentCreatedAt : isRecentDate(row.commentCreatedAt, Number(ageFilter)))) &&
     (signalFilter === 'all' ||
@@ -151,7 +160,7 @@ export default function EvidencePage() {
     <EvidenceImport onImported={refresh} />
     <section className="mt-8 space-y-4"><h2 className="text-lg font-semibold">已保存的线索 · {rows.length}</h2>
       <button type="button" onClick={() => { setFollowUpFilter(!followUpFilter); setSelectedEvidenceId(''); setPage(1); }} className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900">待跟进 {dueRows.length} 条{followUpFilter ? ' · 点击返回原筛选' : ' · 点击查看到期线索'}</button>
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">人工校准 · 近 90 天</h3><p className="mt-1 text-sm text-zinc-700">已判读 {reviewed.length} 条：疑似需求 {reviewed.filter(row => row.reviewVerdict === 'need').length}、非需求 {reviewed.filter(row => row.reviewVerdict === 'not-need').length}、不确定 {reviewed.filter(row => row.reviewVerdict === 'unclear').length}。规则未提示但人工判为需求 {reviewed.filter(row => row.reviewVerdict === 'need' && !isPriorityEvidence(row.text)).length} 条。</p></div><button type="button" onClick={() => { setStatusFilter('all'); setSignalFilter('review-queue'); setAgeFilter('90'); setKeywordFilter('all'); setQuery(''); setPage(1); }} className="rounded-lg bg-zinc-900 px-4 py-2 text-sm text-white">判读下一组 {reviewQueue.length} 条</button></div><p className="mt-2 text-xs text-zinc-600">队列包含规则提示和未提示的评论；判读只评价评论内容，核实原帖和联系进展仍用线索状态记录。新采集数据可能改变尚未判读的队列。</p></div>
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold">人工校准 · 近 90 天</h3><p className="mt-1 text-sm text-zinc-700">已判读 {reviewed.length} 条：疑似需求 {reviewed.filter(row => row.reviewVerdict === 'need').length}、非需求 {reviewed.filter(row => row.reviewVerdict === 'not-need').length}、不确定 {reviewed.filter(row => row.reviewVerdict === 'unclear').length}。规则未提示但人工判为需求 {reviewed.filter(row => row.reviewVerdict === 'need' && !isPriorityEvidence(row.text)).length} 条。</p></div><button type="button" onClick={() => { setStatusFilter('all'); setSignalFilter('review-queue'); setAgeFilter('90'); setKeywordFilter('all'); setPlatformFilter(''); setQuery(''); setPage(1); }} className="rounded-lg bg-zinc-900 px-4 py-2 text-sm text-white">判读下一组 {reviewQueue.length} 条</button></div><p className="mt-2 text-xs text-zinc-600">队列包含规则提示和未提示的评论；判读只评价评论内容，核实原帖和联系进展仍用线索状态记录。新采集数据可能改变尚未判读的队列。</p></div>
       <div className="grid gap-3 sm:grid-cols-3">{([
         { label: '待核实', count: rows.filter(row => row.status === 'new' && isRecentDate(row.commentCreatedAt) && isActionableEvidence(row.text, row.reviewVerdict)).length, filter: 'new' },
         { label: '已核实', count: rows.filter(row => row.status === 'verified').length, filter: 'verified' },
@@ -162,6 +171,7 @@ export default function EvidencePage() {
         <select aria-label="筛选线索状态" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); if (signalFilter === 'verified-missing-link' && e.target.value !== 'verified') setSignalFilter('all'); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="all">全部状态</option><option value="new">待核实</option><option value="verified">已核实</option><option value="contacted">已联系</option><option value="dismissed">忽略</option></select>
         <select aria-label="筛选需求信号" value={signalFilter} onChange={e => { setSignalFilter(e.target.value); if (e.target.value === 'verified-missing-link') { setStatusFilter('verified'); setAgeFilter('all'); } if (e.target.value === 'review-queue') { setStatusFilter('all'); setAgeFilter('90'); } setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="priority">优先核实</option><option value="purchase">购买询问</option><option value="review-queue">人工校准队列</option><option value="missing-link">优先核实 · 待补评论链接</option><option value="verified-missing-link">已核实 · 待补评论链接</option><option value="signals">所有需求提示</option><option value="all">全部评论</option></select>
         <select aria-label="筛选评论发布时间" value={ageFilter} onChange={e => { setAgeFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="30">近 30 天</option><option value="90">近 90 天</option><option value="180">近 180 天</option><option value="365">近 365 天</option><option value="all">全部时间</option><option value="unknown">发布时间未知</option></select>
+        <label className="grid gap-1 text-sm">来源平台<select aria-label="筛选来源平台" value={platformFilter} onChange={e => { setPlatformFilter(e.target.value); if (e.target.value) { setStatusFilter('all'); setSignalFilter('all'); setAgeFilter('all'); } setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="">全部平台</option>{[...new Set(rows.map(row => row.platform))].sort().map(platform => <option key={platform}>{platform}</option>)}</select></label>
         <select aria-label="筛选来源搜索词" value={keywordFilter} onChange={e => { setKeywordFilter(e.target.value); setPage(1); }} className="rounded-lg border border-zinc-300 bg-white p-3"><option value="all">全部搜索词</option>{[...new Set(rows.flatMap(row => row.sourceKeywords?.length ? row.sourceKeywords : row.sourceKeyword ? [row.sourceKeyword] : []))].sort().map(value => <option key={value} value={value}>{value}</option>)}<option value="unknown">来源搜索词未知</option></select>
       </div>
       {selectedEvidenceId && <div className="flex items-center gap-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900"><span>{filtered.length ? '正在查看分析结果对应的评论' : '未找到对应评论，可能已被删除'}</span><button type="button" className="underline" onClick={() => { setSelectedEvidenceId(''); window.history.replaceState(null, '', window.location.pathname); }}>返回全部证据</button></div>}
