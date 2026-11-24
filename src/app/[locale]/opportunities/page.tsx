@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import ResearchLinks from '@/components/ResearchLinks';
 import { isRecentDate } from '@/lib/evidence-freshness';
 
@@ -9,12 +10,16 @@ type Evidence = { id: string; text: string; sourceUrl: string; sourceTitle?: str
 type Opportunity = { id: string; title: string; note: string; evidenceIds: string[]; decision?: 'research' | 'experiment' | 'paused' | 'rejected'; decisionReason?: string; counterEvidence?: string; openQuestions?: string; decisionAt?: string; decisionHistory?: Array<{ decision: 'research' | 'experiment' | 'paused' | 'rejected'; reason: string; at: string }>; updatedAt: string };
 
 export default function OpportunitiesPage() {
+  return <Suspense fallback={null}><OpportunityList /></Suspense>;
+}
+
+function OpportunityList() {
   const [themes, setThemes] = useState<Opportunity[]>([]);
   const [evidence, setEvidence] = useState<Evidence[]>([]);
   const [title, setTitle] = useState('');
   const [search, setSearch] = useState('');
   const [includeOlder, setIncludeOlder] = useState(false);
-  const [focusedId, setFocusedId] = useState('');
+  const focusedId = useSearchParams().get('id') || '';
   const [activeId, setActiveId] = useState('');
   const [error, setError] = useState('');
   const refresh = async () => {
@@ -22,12 +27,8 @@ export default function OpportunitiesPage() {
     if (!a.ok || !b.ok) { setError('加载需求主题失败'); return; }
     setThemes(await a.json()); setEvidence(await b.json());
   };
-  useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get('id') || '';
-    setFocusedId(id);
-    setActiveId(id);
-    void refresh();
-  }, []);
+  useEffect(() => { void refresh(); }, []);
+  useEffect(() => setActiveId(focusedId), [focusedId]);
   const visibleThemes = focusedId ? themes.filter(theme => theme.id === focusedId) : themes;
 
   async function create() {
