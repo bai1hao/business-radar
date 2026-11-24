@@ -10,7 +10,7 @@ type Row = { id: string; platform: string; text: string; sourceUrl: string; sour
 
 export default function EvidencePage() {
   const [rows, setRows] = useState<Row[]>([]);
-  const [form, setForm] = useState({ platform: 'douyin', text: '', sourceUrl: '', sourceTitle: '', commentUrl: '', contactUrl: '', commentId: '', commentCreatedAt: '' });
+  const [form, setForm] = useState({ platform: 'douyin', text: '', sourceUrl: '', sourceTitle: '', sourceKeyword: '', commentUrl: '', contactUrl: '', commentId: '', commentCreatedAt: '' });
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('new');
@@ -47,7 +47,9 @@ export default function EvidencePage() {
   async function save() {
     const response = await fetch('/api/evidence', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
     if (!response.ok) { setError((await response.json()).error); return; }
-    setError(''); setForm({ ...form, text: '', sourceUrl: '', sourceTitle: '', commentUrl: '', contactUrl: '', commentId: '', commentCreatedAt: '' }); await refresh();
+    const saved: Row = await response.json();
+    setSelectedEvidenceId(saved.id);
+    setError(''); setForm({ ...form, text: '', sourceUrl: '', sourceTitle: '', sourceKeyword: '', commentUrl: '', contactUrl: '', commentId: '', commentCreatedAt: '' }); await refresh();
   }
   async function update(row: Row, status: Row['status'], note: string) {
     const response = await fetch('/api/evidence', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: row.id, status, note }) });
@@ -133,6 +135,7 @@ export default function EvidencePage() {
       <div className="grid gap-3 md:grid-cols-2">
         <input aria-label="平台" className="rounded-lg border border-zinc-300 p-3" placeholder="平台" value={form.platform} onChange={e => setForm({ ...form, platform: e.target.value })} />
         <input aria-label="原帖链接" className="rounded-lg border border-zinc-300 p-3" placeholder="原帖链接（必填）" value={form.sourceUrl} onChange={e => setForm({ ...form, sourceUrl: e.target.value })} />
+        <input aria-label="来源搜索词" className="rounded-lg border border-zinc-300 p-3" placeholder="来源搜索词（可选）" maxLength={120} value={form.sourceKeyword} onChange={e => setForm({ ...form, sourceKeyword: e.target.value })} />
         <input aria-label="原帖标题" className="rounded-lg border border-zinc-300 p-3" placeholder="原帖标题（可选，有助于理解短评论）" value={form.sourceTitle} onChange={e => setForm({ ...form, sourceTitle: e.target.value })} />
         <input aria-label="评论分享链接" className="rounded-lg border border-zinc-300 p-3" placeholder="评论分享链接（可选，确认可打开后填写）" value={form.commentUrl} onChange={e => setForm({ ...form, commentUrl: e.target.value })} />
         <input aria-label="联系入口" className="rounded-lg border border-zinc-300 p-3" placeholder="联系入口（可选，确认后填写作者主页等链接）" value={form.contactUrl} onChange={e => setForm({ ...form, contactUrl: e.target.value })} />
