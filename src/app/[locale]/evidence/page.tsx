@@ -39,7 +39,9 @@ export default function EvidencePage() {
     if (keyword) {
       setKeywordFilter(keyword);
       setStatusFilter('all');
-      setSignalFilter(params.get('signal') === 'purchase' ? 'purchase' : 'all');
+      const purchaseOnly = params.get('signal') === 'purchase';
+      setSignalFilter(purchaseOnly ? 'purchase' : 'all');
+      if (!evidenceId && params.get('followUp') !== 'due') setAgeFilter(purchaseOnly ? '90' : 'all');
     }
     void refresh();
   }, []);
