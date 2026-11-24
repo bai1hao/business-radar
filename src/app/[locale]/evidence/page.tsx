@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { isActionableEvidence, isPriorityEvidence, needSignals } from '@/lib/need-signals';
+import ResearchLinks from '@/components/ResearchLinks';
 import { isRecentDate } from '@/lib/evidence-freshness';
 import EvidenceImport from '@/components/EvidenceImport';
 
@@ -180,6 +181,7 @@ export default function EvidencePage() {
         </div>
         <div className="mt-3 grid gap-3 rounded-xl border border-zinc-200 p-4 sm:grid-cols-3"><label className="text-sm">每月耗时（小时）<input aria-label="每月耗时小时" type="number" min="0" step="0.5" key={`${row.id}:${row.hoursLostPerMonth ?? ''}`} defaultValue={row.hoursLostPerMonth ?? ''} onBlur={e => { const value = e.target.value.trim(); if (value !== String(row.hoursLostPerMonth ?? '')) void saveFollowUp(row, { hoursLostPerMonth: value ? Number(value) : null }); }} placeholder="未知留空" className="mt-1 w-full rounded-lg border border-zinc-300 p-2" /></label><label className="text-sm">现有月支出（元）<input aria-label="现有月支出元" type="number" min="0" step="1" key={`${row.id}:${row.currentSpendYuanPerMonth ?? ''}`} defaultValue={row.currentSpendYuanPerMonth ?? ''} onBlur={e => { const value = e.target.value.trim(); if (value !== String(row.currentSpendYuanPerMonth ?? '')) void saveFollowUp(row, { currentSpendYuanPerMonth: value ? Number(value) : null }); }} placeholder="未知留空" className="mt-1 w-full rounded-lg border border-zinc-300 p-2" /></label><label className="text-sm">明确付费表态<select aria-label="明确付费表态" value={row.paymentIntent || ''} onChange={e => void saveFollowUp(row, { paymentIntent: e.target.value as Row['paymentIntent'] })} className="mt-1 w-full rounded-lg border border-zinc-300 p-2"><option value="">未询问</option><option value="yes">明确愿意</option><option value="no">明确不愿意</option><option value="unknown">回答不确定</option></select></label><label className="text-sm sm:col-span-3">关于付费的原话<input aria-label="付费表态原话" key={`${row.id}:${row.paymentEvidence || ''}`} defaultValue={row.paymentEvidence || ''} onBlur={e => { if (e.target.value !== (row.paymentEvidence || '')) void saveFollowUp(row, { paymentEvidence: e.target.value.trim() }); }} placeholder="只记录对方实际说过的话；未沟通就留空" className="mt-1 w-full rounded-lg border border-zinc-300 p-2" /></label></div>
         <textarea aria-label="线索备注" defaultValue={row.note} onBlur={e => { if (e.target.value !== row.note) void update(row, row.status, e.target.value); }} placeholder="备注：需求背景、联系进展…" className="mt-4 w-full rounded-lg border border-zinc-300 p-3 text-sm" />
+        <ResearchLinks text={row.note} />
       </article>)}
       {filtered.length === 0 && <p className="rounded-2xl border border-dashed border-zinc-300 p-10 text-center text-zinc-500">没有匹配的线索。换个关键词或状态试试。</p>}
       {pageCount > 1 && <div className="flex items-center justify-end gap-3"><button disabled={page <= 1} onClick={() => setPage(page - 1)} className="rounded-lg border border-zinc-300 bg-white px-4 py-2 disabled:opacity-40">上一页</button><button disabled={page >= pageCount} onClick={() => setPage(page + 1)} className="rounded-lg border border-zinc-300 bg-white px-4 py-2 disabled:opacity-40">下一页</button></div>}
